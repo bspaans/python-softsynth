@@ -23,6 +23,8 @@ class Source(object):
         try:
             for e in self.read():
                 self.sink.write(e)
+        except KeyboardInterrupt:
+            print "Stopped."
         finally:
             self.sink.close()
 
@@ -35,19 +37,19 @@ class Sink(object):
         pass # finish of processing
 
 
-class WaveForm(Source):
-    def __init__(self, frequency = PITCH_STANDARD):
-        super(WaveForm, self).__init__()
-        self.frequency   = frequency
+class WaveFormSource(Source):
+    def __init__(self):
+        super(WaveFormSource, self).__init__()
         self.sample_rate = DEFAULT_SAMPLE_RATE
         self.byte_rate   = DEFAULT_BYTE_RATE
         self.nr_samples  = self.sample_rate
         self.max_value   = 2 ** (self.byte_rate * 8 - 1) - 1
 
 
-class SineWaveForm(WaveForm):
+class SineWaveForm(WaveFormSource):
     def __init__(self, frequency = PITCH_STANDARD):
-        super(SineWaveForm, self).__init__(frequency)
+        super(SineWaveForm, self).__init__()
+        self.frequency = frequency
 
     def read(self):
         cycles_per_period = 2 * math.pi * self.frequency / self.sample_rate
@@ -57,6 +59,19 @@ class SineWaveForm(WaveForm):
             t += 1
             yield sine
 
+class Mixer(WaveFormSource):
+    def __init__(self):
+        super(Mixer, self).__init__()
+        self.sources = []
+
+    def add_source(self, source):
+        self.sources.append(source)
+
+    def read(self):
+        generators = map(lambda s: s.read(), self.sources)
+        while generators != []:
+            values = map(lambda g: g.next(), generators)
+            yield (sum(values) / len(values))
 
 class WaveWriter(Sink):
 
@@ -81,10 +96,19 @@ class WaveWriter(Sink):
         w.setframerate(self.sample_rate)
         w.writeframes(''.join(self.data))
         w.close()
+        print "Written", self.filename
 
 
 if __name__ == '__main__':
-    sine_wave = SineWaveForm()
+    sine_wave_1 = SineWaveForm(frequency=440)
+    sine_wave_2 = SineWaveForm(frequency=220)
+    sine_wave_3 = SineWaveForm(frequency=261.63)
+    sine_wave_4 = SineWaveForm(frequency=329.63)
+    mixer = Mixer()
+    mixer.add_source(sine_wave_1)
+    mixer.add_source(sine_wave_2)
+    mixer.add_source(sine_wave_3)
+    mixer.add_source(sine_wave_4)
     wave_writer = WaveWriter("sample.wav")
-    sine_wave.connect_sink(wave_writer)
-    sine_wave.stream()
+    mixer.connect_sink(wave_writer)
+    mixer.stream()
