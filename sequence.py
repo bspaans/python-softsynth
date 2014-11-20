@@ -3,6 +3,7 @@
 import math
 import wave
 import struct
+import uuid
 
 DEFAULT_SAMPLE_RATE       = 44100
 PITCH_STANDARD            = 440  # pitch of A4
@@ -62,38 +63,73 @@ class SineWaveForm(WaveFormSource):
             t += 1
             yield sine
 
+    def __repr__(self):
+        return "< sine wave %fHz >" % self.frequency
+
+
 class Mixer(Source):
     def __init__(self):
         super(Mixer, self).__init__()
-        self.sources = []
+        self.sources = {}
 
-    def add_source(self, source):
-        self.sources.append(source)
+    def add_source(self, source, token_id):
+        self.sources[token_id] = source.read()
 
-    def _delete_empty_generators(self, empty_generators):
-        for e in empty_generators:
-            self.generators.remove(e)
+    def remove_source(self, source, token_id):
+        if token_id not in self.sources:
+            return 
+        del(self.sources[token_id])
 
     def _read_from_generators(self):
         values = []
         empty_generators = []
-        for g in self.generators:
+        for (token_id, generator) in self.sources.iteritems():
             try:
-                values.append(g.next())
+                values.append(generator.next())
             except StopIteration:
-                empty_generators.append(g)
-        self._delete_empty_generators(empty_generators)
+                empty_generators.append(token_id)
+        map(self.remove_source, empty_generators)
         return values
 
     def read(self):
-        self.generators = map(lambda s: s.read(), self.sources)
-        while self.generators != []:
+        while True:
             values = self._read_from_generators()
             number_of_sources = len(values)
             if number_of_sources == 0:
-                return
-            yield (sum(values) / number_of_sources)
+                yield 0.0
+            else:
+                yield (sum(values) / number_of_sources)
 
+class ScheduledSources(Source):
+    def __init__(self):
+        super(ScheduledSources, self).__init__()
+        self.sample_rate = DEFAULT_SAMPLE_RATE
+        self.events = {}
+        self.mixer = Mixer()
+
+    def add_event(self, time, event):
+        events = self.events.get(time, [])
+        events.append(event)
+        self.events[time] = events
+
+    def play_at(self, source, start_at_sample, stop_at_sample = None):
+        token_id = uuid.uuid4()
+        self.add_event(start_at_sample, ("START", source, token_id))
+        if stop_at_sample is not None:
+            self.add_event(stop_at_sample, ("STOP", source, token_id))
+
+    def read(self):
+        t = 0
+        for p in self.mixer.read():
+            if t in self.events:
+                for typ, source, id_ in self.events[t]:
+                    print typ, t, "-", id_, ":", source
+                    if typ == "START":
+                        self.mixer.add_source(source, id_)
+                    elif typ == "STOP":
+                        self.mixer.remove_source(source, id_)
+            yield p
+            t += 1
 
 class WaveWriter(Sink):
 
@@ -122,15 +158,17 @@ class WaveWriter(Sink):
 
 
 if __name__ == '__main__':
-    sine_wave_1 = SineWaveForm(frequency=440, nr_of_samples=(DEFAULT_SAMPLE_RATE / 2))
-    sine_wave_2 = SineWaveForm(frequency=220, nr_of_samples=DEFAULT_SAMPLE_RATE)
-    sine_wave_3 = SineWaveForm(frequency=261.63, nr_of_samples=(DEFAULT_SAMPLE_RATE * 2))
-    sine_wave_4 = SineWaveForm(frequency=329.63, nr_of_samples=(DEFAULT_SAMPLE_RATE / 2 * 3))
-    mixer = Mixer()
-    mixer.add_source(sine_wave_1)
-    mixer.add_source(sine_wave_2)
-    mixer.add_source(sine_wave_3)
-    mixer.add_source(sine_wave_4)
+    sine_wave_1 = SineWaveForm(frequency=440)
+    sine_wave_2 = SineWaveForm(frequency=220)
+    sine_wave_3 = SineWaveForm(frequency=261.63)
+    sine_wave_4 = SineWaveForm(frequency=329.63)
+
+    scheduler = ScheduledSources()
+    scheduler.play_at(sine_wave_1, DEFAULT_SAMPLE_RATE * 4)
+    scheduler.play_at(sine_wave_2, 0.0, DEFAULT_SAMPLE_RATE)
+    scheduler.play_at(sine_wave_3, 0.0, DEFAULT_SAMPLE_RATE / 2)
+    scheduler.play_at(sine_wave_4, 0.0, DEFAULT_SAMPLE_RATE / 2 * 3)
+
     wave_writer = WaveWriter("sample.wav")
-    mixer.connect_sink(wave_writer)
-    mixer.stream()
+    scheduler.connect_sink(wave_writer)
+    scheduler.stream()
