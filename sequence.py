@@ -156,18 +156,48 @@ class WaveWriter(Sink):
         w.close()
         print "Written", self.filename
 
+class FrequencyTable:
+
+    def __init__(self):
+        self.note_frequencies = {}
+        self.midi_frequencies = {} # 69 corresponds with a4
+        self.initialize_midi_frequencies()
+        self.initialize_note_frequencies()
+
+    def initialize_midi_frequencies(self):
+        for i in range(70):
+            freq = PITCH_STANDARD * 2 ** -(i / 12.0)
+            self.midi_frequencies[69 - i] = freq
+        for i in range(70):
+            freq = PITCH_STANDARD * 2 ** (i / 12.0)
+            self.midi_frequencies[69 + i] = freq
+        for m in self.midi_frequencies:
+            print m, self.midi_frequencies[m]
+
+    def initialize_note_frequencies(self):
+        notes = ['c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b']
+        for i in range(128):
+            octave = i / 12 - 1
+            note = notes[i % 12]
+            notation = "%s%d" % (note, octave)
+            self.note_frequencies[notation] = self.midi_frequencies[i]
+
+class InstrumentBank:
+    def __init__(self, frequency_table):
+        self.bank = {}
+        for n, freq in frequency_table.note_frequencies.iteritems():
+            self.bank[n] = SineWaveForm(frequency=freq)
+
 
 if __name__ == '__main__':
-    sine_wave_1 = SineWaveForm(frequency=440)
-    sine_wave_2 = SineWaveForm(frequency=220)
-    sine_wave_3 = SineWaveForm(frequency=261.63)
-    sine_wave_4 = SineWaveForm(frequency=329.63)
 
+    freq_table = FrequencyTable()
+    bank = InstrumentBank(freq_table)
     scheduler = ScheduledSources()
-    scheduler.play_at(sine_wave_1, DEFAULT_SAMPLE_RATE * 4)
-    scheduler.play_at(sine_wave_2, 0.0, DEFAULT_SAMPLE_RATE)
-    scheduler.play_at(sine_wave_3, 0.0, DEFAULT_SAMPLE_RATE / 2)
-    scheduler.play_at(sine_wave_4, 0.0, DEFAULT_SAMPLE_RATE / 2 * 3)
+    scheduler.play_at(bank.bank['a4'], DEFAULT_SAMPLE_RATE * 4)
+    scheduler.play_at(bank.bank['c4'], 0.0, DEFAULT_SAMPLE_RATE)
+    scheduler.play_at(bank.bank['e4'], 0.0, DEFAULT_SAMPLE_RATE / 2)
+    scheduler.play_at(bank.bank['a3'], 0.0, DEFAULT_SAMPLE_RATE / 2 * 3)
 
     wave_writer = WaveWriter("sample.wav")
     scheduler.connect_sink(wave_writer)
