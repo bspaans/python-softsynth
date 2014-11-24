@@ -4,6 +4,7 @@ import math
 import wave
 import struct
 import uuid
+import pyaudio
 
 DEFAULT_SAMPLE_RATE       = 44100
 PITCH_STANDARD            = 440  # pitch of A4
@@ -162,6 +163,9 @@ class WaveWriter(Sink):
     def write(self, elem):
         sample = struct.pack(self.struct_format, int(elem))
         self.data.append(sample)
+        if len(self.data) == 1024:
+            self.stream.write(self.data)
+            self.data = []
 
     def close(self):
         w = wave.open(self.filename, "w")
@@ -171,6 +175,25 @@ class WaveWriter(Sink):
         w.writeframes(''.join(self.data))
         w.close()
         print "Written", self.filename
+
+class PyAudioWriter(Sink):
+
+    def __init__(self):
+        self.pyaudio = pyaudio.PyAudio()
+        self.sample_rate   = DEFAULT_SAMPLE_RATE
+        self.byte_rate     = DEFAULT_BYTE_RATE
+        self.struct_format = STRUCT_PACK_FORMAT[self.byte_rate]
+
+    def open(self):
+        self.stream = self.pyaudio.open(format=pyaudio.paInt16 , channels=1, rate=self.sample_rate, output=True)
+        self.data = []
+
+    def write(self, elem):
+        sample = struct.pack(self.struct_format, int(elem))
+        self.data.append(sample)
+
+    def close(self):
+        self.stream.close()
 
 class FrequencyTable:
 
@@ -219,9 +242,11 @@ if __name__ == '__main__':
     freq_table = FrequencyTable()
     bank = InstrumentBank(freq_table)
     scheduler = ScheduledSources()
-    scheduler.play_at(bank.bank['a3'], 0.0, DEFAULT_SAMPLE_RATE * 4)
-    scheduler.play_at(bank.bank['a4'], 0.0, DEFAULT_SAMPLE_RATE * 4)
+    scheduler.play_at(bank.bank['a3'], 0.0, DEFAULT_SAMPLE_RATE * 40)
+    scheduler.play_at(bank.bank['a4'], 0.0, DEFAULT_SAMPLE_RATE * 40)
 
     wave_writer = WaveWriter("sample.wav")
     scheduler.connect_sink(wave_writer)
+    #pyaudio_writer = PyAudioWriter()
+    #scheduler.connect_sink(pyaudio_writer)
     scheduler.stream()
