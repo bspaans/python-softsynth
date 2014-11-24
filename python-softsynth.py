@@ -180,6 +180,7 @@ class PyAudioWriter(Sink):
         self.sample_rate   = DEFAULT_SAMPLE_RATE
         self.byte_rate     = DEFAULT_BYTE_RATE
         self.struct_format = STRUCT_PACK_FORMAT[self.byte_rate]
+        self.BUFFER_SIZE   = 2048
 
     def open(self):
         self.stream = self.pyaudio.open(format=pyaudio.paInt16 , channels=1, rate=self.sample_rate, output=True)
@@ -188,7 +189,7 @@ class PyAudioWriter(Sink):
     def write(self, elem):
         sample = struct.pack(self.struct_format, int(elem))
         self.data.append(sample)
-        if len(self.data) == 1024:
+        if len(self.data) == self.BUFFER_SIZE:
             self.stream.write(''.join(self.data))
             self.data = []
 

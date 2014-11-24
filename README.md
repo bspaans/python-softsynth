@@ -14,7 +14,7 @@ Current state:
 
 On linux:
 =========
-- pip install pyaudio
+- install pyaudio from http://people.csail.mit.edu/hubert/pyaudio/
 - python python-softsynth.py
 
 On Mac:
