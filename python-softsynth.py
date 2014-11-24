@@ -163,9 +163,6 @@ class WaveWriter(Sink):
     def write(self, elem):
         sample = struct.pack(self.struct_format, int(elem))
         self.data.append(sample)
-        if len(self.data) == 1024:
-            self.stream.write(self.data)
-            self.data = []
 
     def close(self):
         w = wave.open(self.filename, "w")
@@ -191,6 +188,9 @@ class PyAudioWriter(Sink):
     def write(self, elem):
         sample = struct.pack(self.struct_format, int(elem))
         self.data.append(sample)
+        if len(self.data) == 1024:
+            self.stream.write(''.join(self.data))
+            self.data = []
 
     def close(self):
         self.stream.close()
@@ -245,8 +245,8 @@ if __name__ == '__main__':
     scheduler.play_at(bank.bank['a3'], 0.0, DEFAULT_SAMPLE_RATE * 40)
     scheduler.play_at(bank.bank['a4'], 0.0, DEFAULT_SAMPLE_RATE * 40)
 
-    wave_writer = WaveWriter("sample.wav")
-    scheduler.connect_sink(wave_writer)
-    #pyaudio_writer = PyAudioWriter()
-    #scheduler.connect_sink(pyaudio_writer)
+    #wave_writer = WaveWriter("sample.wav")
+    #scheduler.connect_sink(wave_writer)
+    pyaudio_writer = PyAudioWriter()
+    scheduler.connect_sink(pyaudio_writer)
     scheduler.stream()

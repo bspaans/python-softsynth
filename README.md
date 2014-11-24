@@ -10,3 +10,19 @@ Current state:
 * Wave forms have attack, decay and sustain parameters
 * There are two sinks: a wave file writer and a pyaudio output sink
 * A primitive sequencer can be used to "schedule" sources
+
+On linux:
+=========
+- pip install pyaudio
+- python python-softsynth.py
+
+On Mac:
+=======
+- brew install portaudio
+- sudo easy_install pyaudio
+- python python-softsynth.py
+
+
+On Windows:
+===========
+- lol windows
