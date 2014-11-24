@@ -5,6 +5,8 @@ import wave
 import struct
 import uuid
 
+from mingus.midi.sequencer import Sequencer
+
 DEFAULT_SAMPLE_RATE       = 44100
 PITCH_STANDARD            = 440  # pitch of A4
 DEFAULT_BYTE_RATE         = 2    # gives 2 ^ (8 * DEFAULT_BYTE_RATE) levels
@@ -40,7 +42,6 @@ class Sink(object):
     def close(self):
         pass # finish of processing
 
-
 class WaveFormSource(Source):
     def __init__(self, nr_of_samples = -1):
         super(WaveFormSource, self).__init__()
@@ -49,17 +50,32 @@ class WaveFormSource(Source):
         self.max_value     = 2 ** (self.byte_rate * 8 - 1) - 1
         self.nr_of_samples = nr_of_samples # < 0 for unlimited or until cut off by the implementing class
 
+        self.max_amplitude = 1.0
+        self.attack_time   = DEFAULT_SAMPLE_RATE / 8.0
+        self.decay_time    = DEFAULT_SAMPLE_RATE / 8.0
+        self.sustain_level = 0.5
+
+    def amplitude(self, t):
+        if t < self.attack_time:
+            return t / self.attack_time * self.max_amplitude
+        elif t < self.attack_time + self.decay_time:
+            r = (t - self.attack_time) / self.decay_time
+            return self.max_amplitude - self.sustain_level * r
+        else:
+            return self.sustain_level
+        return self.max_amplitude
 
 class SineWaveForm(WaveFormSource):
     def __init__(self, frequency = PITCH_STANDARD, nr_of_samples = None):
         super(SineWaveForm, self).__init__(nr_of_samples)
         self.frequency = frequency
 
+
     def read(self):
         cycles_per_period = 2 * math.pi * self.frequency / self.sample_rate
         t = 0
         while self.nr_of_samples < 0 or t < self.nr_of_samples:
-            sine = math.sin( t * cycles_per_period) * self.max_value
+            sine = self.amplitude(t) * math.sin( t * cycles_per_period) * self.max_value
             t += 1
             yield sine
 
@@ -99,6 +115,8 @@ class Mixer(Source):
                 yield 0.0
             else:
                 yield (sum(values) / number_of_sources)
+    def __repr__(self):
+        return "<mixer [%s]>" % (", ".join(map(str, self.sources)))
 
 class ScheduledSources(Source):
     def __init__(self):
@@ -171,8 +189,6 @@ class FrequencyTable:
         for i in range(70):
             freq = PITCH_STANDARD * 2 ** (i / 12.0)
             self.midi_frequencies[69 + i] = freq
-        for m in self.midi_frequencies:
-            print m, self.midi_frequencies[m]
 
     def initialize_note_frequencies(self):
         notes = ['c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b']
@@ -186,7 +202,18 @@ class InstrumentBank:
     def __init__(self, frequency_table):
         self.bank = {}
         for n, freq in frequency_table.note_frequencies.iteritems():
-            self.bank[n] = SineWaveForm(frequency=freq)
+            base_freq = SineWaveForm(frequency=freq)
+            first_overtone = SineWaveForm(frequency=freq * 2)
+            first_overtone.max_amplitude = 0.75
+            first_overtone.sustain_level = 0.375
+            second_overtone = SineWaveForm(frequency=freq * 3)
+            second_overtone.max_amplitude = 0.5
+            second_overtone.sustain_level = 0.25
+            mixer = Mixer()
+            mixer.add_source(base_freq, str(base_freq))
+            mixer.add_source(first_overtone, str(first_overtone))
+            mixer.add_source(second_overtone, str(second_overtone))
+            self.bank[n] = mixer
 
 
 if __name__ == '__main__':
@@ -194,10 +221,8 @@ if __name__ == '__main__':
     freq_table = FrequencyTable()
     bank = InstrumentBank(freq_table)
     scheduler = ScheduledSources()
-    scheduler.play_at(bank.bank['a4'], DEFAULT_SAMPLE_RATE * 4)
-    scheduler.play_at(bank.bank['c4'], 0.0, DEFAULT_SAMPLE_RATE)
-    scheduler.play_at(bank.bank['e4'], 0.0, DEFAULT_SAMPLE_RATE / 2)
-    scheduler.play_at(bank.bank['a3'], 0.0, DEFAULT_SAMPLE_RATE / 2 * 3)
+    scheduler.play_at(bank.bank['a3'], 0.0, DEFAULT_SAMPLE_RATE * 4)
+    scheduler.play_at(bank.bank['a4'], 0.0, DEFAULT_SAMPLE_RATE * 4)
 
     wave_writer = WaveWriter("sample.wav")
     scheduler.connect_sink(wave_writer)
