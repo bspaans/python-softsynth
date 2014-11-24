@@ -8,6 +8,7 @@ Current state:
 * A source can be connected to a sink
 * There are two sources: a sine wave transform generator, and a mixer that can mix multiple wave sources into one
 * Wave forms have attack, decay and sustain parameters
+* Frequency table and primitive instrument bank doing additive analysis using overtones
 * There are two sinks: a wave file writer and a pyaudio output sink
 * A primitive sequencer can be used to "schedule" sources
 
