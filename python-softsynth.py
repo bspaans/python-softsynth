@@ -5,8 +5,6 @@ import wave
 import struct
 import uuid
 
-from mingus.midi.sequencer import Sequencer
-
 DEFAULT_SAMPLE_RATE       = 44100
 PITCH_STANDARD            = 440  # pitch of A4
 DEFAULT_BYTE_RATE         = 2    # gives 2 ^ (8 * DEFAULT_BYTE_RATE) levels
