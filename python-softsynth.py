@@ -2,6 +2,7 @@
 
 import uuid
 import sys
+import multiprocessing
 from synth.source import Source, SineWaveForm
 from synth.sink import PyAudioWriter
 from synth.mixer import Mixer
@@ -64,12 +65,17 @@ class FrequencyTable:
             freq = pitch_standard * 2 ** (i / 12.0)
             self.midi_frequencies[69 + i] = freq
 
-    def initialize_note_frequencies(self):
+    def midi_to_note(self, midi_nr):
         notes = ['c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b']
+        octave = midi_nr / 12 - 1
+        note = notes[midi_nr % 12]
+        notation = "%s%d" % (note, octave)
+        return notation
+
+
+    def initialize_note_frequencies(self):
         for i in range(128):
-            octave = i / 12 - 1
-            note = notes[i % 12]
-            notation = "%s%d" % (note, octave)
+            notation = self.midi_to_note(i)
             self.note_frequencies[notation] = self.midi_frequencies[i]
             print notation, self.midi_frequencies[i]
 
@@ -88,12 +94,60 @@ class InstrumentBank:
             mixer.add_source(second_overtone, str(second_overtone))
             self.bank[n] = mixer
 
+class Synth:
+    def __init__(self, options):
+        self.options = options
+        self.mixer = Mixer(options)
+
+        self.freq_table = FrequencyTable(options)
+        self.bank = InstrumentBank(options, self.freq_table)
+
+        self.playing = {}
+
+    def noteon(self, note):
+        token_id = uuid.uuid4()
+        self.playing[note] = token_id
+        self.mixer.add_source(self.bank.bank[self.freq_table.midi_to_note(note)], token_id)
+        print "Note on"
+
+    def noteoff(self, note):
+        token_id = self.playing[note]
+        self.mixer.remove_source(self.bank.bank[self.freq_table.midi_to_note(note)], token_id)
+        print "Note off"
+
+    def process_command(self, command, arg):
+        if command == 'noteon':
+            self.noteon(arg)
+        if command == 'noteoff':
+            self.noteon(arg)
+    
+    def stream(self, queue):
+        print "Started streaming"
+        self.sink = PyAudioWriter(self.options)
+        self.mixer.connect_sink(self.sink)
+        self.sink.open()
+        try:
+            for e in self.mixer.read():
+                self.sink.write(e)
+                while not queue.empty():
+                    command, arg = queue.get()
+                    self.process_command(command, arg)
+
+        except KeyboardInterrupt:
+            print "Stopped streaming."
+        finally:
+            self.sink.close()
+        
+
 def main():
     options = Options()
-    server = SynthTCPServer('localhost', int(sys.argv[1])) 
+    q = multiprocessing.Queue()
+    synth = Synth(options)
+    synth_proc = multiprocessing.Process(target=synth.stream, args=(q,))
+    server = SynthTCPServer('localhost', int(sys.argv[1]), q) 
+    synth_proc.start()
     server.serve_forever()
-    freq_table = FrequencyTable(options)
-    bank = InstrumentBank(options, freq_table)
+
     scheduler = ScheduledSources(options)
     scheduler.play_at(bank.bank['a3'], 0.0, options.sample_rate * 40)
     scheduler.play_at(bank.bank['a4'], 0.0, options.sample_rate * 40)

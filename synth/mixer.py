@@ -6,9 +6,13 @@ class Mixer(Source):
         self.sources = {}
 
     def add_source(self, source, token_id):
+        print "Add source"
         self.sources[token_id] = source.read()
+        print self.sources
+        print id(self.sources)
 
     def remove_source(self, source, token_id):
+        print "Remove source"
         if token_id not in self.sources:
             return 
         del(self.sources[token_id])
@@ -25,6 +29,7 @@ class Mixer(Source):
         return values
 
     def read(self):
+        id(self.sources)
         while True:
             values = self._read_from_generators()
             number_of_sources = len(values)
