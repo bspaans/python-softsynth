@@ -5,6 +5,7 @@ import sys
 from synth.source import Source, SineWaveForm
 from synth.sink import PyAudioWriter
 from synth.mixer import Mixer
+from synth.server import SynthTCPServer
 
 STRUCT_PACK_FORMAT = { 1: 'b', 2: 'h', 4: 'i', 8: 'q' } # key is byte rate
 
@@ -89,6 +90,8 @@ class InstrumentBank:
 
 def main():
     options = Options()
+    server = SynthTCPServer('localhost', int(sys.argv[1])) 
+    server.serve_forever()
     freq_table = FrequencyTable(options)
     bank = InstrumentBank(options, freq_table)
     scheduler = ScheduledSources(options)
