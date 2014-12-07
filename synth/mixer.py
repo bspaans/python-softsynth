@@ -6,13 +6,9 @@ class Mixer(Source):
         self.sources = {}
 
     def add_source(self, source, token_id):
-        print "Add source"
         self.sources[token_id] = source.read()
-        print self.sources
-        print id(self.sources)
 
     def remove_source(self, source, token_id):
-        print "Remove source"
         if token_id not in self.sources:
             return 
         del(self.sources[token_id])
