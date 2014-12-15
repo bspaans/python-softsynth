@@ -3,21 +3,21 @@
 import uuid
 import sys
 import multiprocessing
-from synth.source import Source, SineWaveForm
+from synth.source import SineWaveForm
 from synth.sink import PyAudioWriter
 from synth.mixer import Mixer
 from synth.server import SynthTCPServer
 
-STRUCT_PACK_FORMAT = { 1: 'b', 2: 'h', 4: 'i', 8: 'q' } # key is byte rate
+STRUCT_PACK_FORMAT = {1: 'b', 2: 'h', 4: 'i', 8: 'q'} # key is byte rate
 
-class Options:
+class Options(object):
     def __init__(self):
         self.sample_rate    = 44100
         self.pitch_standard = 440  # pitch of A4
         self.byte_rate      = 2    # gives 2 ^ (8 * DEFAULT_BYTE_RATE) levels
-	self.struct_pack_format = STRUCT_PACK_FORMAT[self.byte_rate]
+        self.struct_pack_format = STRUCT_PACK_FORMAT[self.byte_rate]
 
-class FrequencyTable:
+class FrequencyTable(object):
 
     def __init__(self, options):
         self.note_frequencies = {}
@@ -46,7 +46,7 @@ class FrequencyTable:
             notation = self.midi_to_note(i)
             self.note_frequencies[notation] = self.midi_frequencies[i]
 
-class Instrument:
+class Instrument(object):
     def __init__(self, options, frequency_table):
         self.options = options
         self.frequency_table = frequency_table
@@ -65,10 +65,11 @@ class Instrument:
         mixer.add_source(second_overtone, str(second_overtone))
         return mixer
 
-class Synth:
+class Synth(object):
     def __init__(self, options):
         self.options = options
         self.mixer = Mixer(options)
+        self.sink = None
 
         self.freq_table = FrequencyTable(options)
         self.instrument = Instrument(options, self.freq_table)
@@ -111,13 +112,18 @@ class Synth:
             self.sink.close()
         
 
-def main():
-    options = Options()
-    q = multiprocessing.Queue()
+def start_softsynth(options = None):
+    if options is None:
+        options = Options()
+    queue = multiprocessing.Queue()
     synth = Synth(options)
-    synth_proc = multiprocessing.Process(target=synth.stream, args=(q,))
+    synth_proc = multiprocessing.Process(target=synth.stream, args=(queue,))
+    return (queue, synth_proc)
+
+def main():
+    (queue, synth_proc) = start_softsynth()
     port = int(sys.argv[1]) if len(sys.argv) == 2 else 5001
-    server = SynthTCPServer('localhost', port, q) 
+    server = SynthTCPServer('localhost', port, queue) 
     synth_proc.start()
     server.serve_forever()
 
