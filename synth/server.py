@@ -22,7 +22,10 @@ class SynthTCPServer():
     def __init__(self, host, port, synth):
         handler = SynthTCPHandler
         handler.synth = synth
+	self.host = host
+	self.port = port
         self.server = SocketServer.TCPServer((host, port), handler)
+
     def serve_forever(self):
-        print "Start serving"
+        print "Listening on", "%s:%d" % (self.host, self.port)
         self.server.serve_forever()

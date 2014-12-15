@@ -116,7 +116,8 @@ def main():
     q = multiprocessing.Queue()
     synth = Synth(options)
     synth_proc = multiprocessing.Process(target=synth.stream, args=(q,))
-    server = SynthTCPServer('localhost', int(sys.argv[1]), q) 
+    port = int(sys.argv[1]) if len(sys.argv) == 2 else 5001
+    server = SynthTCPServer('localhost', port, q) 
     synth_proc.start()
     server.serve_forever()
 
