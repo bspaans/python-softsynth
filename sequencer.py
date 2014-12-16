@@ -13,13 +13,17 @@ class SoftsynthSequencer(Sequencer):
         super(SoftsynthSequencer, self).__init__()
 
     def init(self):
+        print "Initializing softsynth"
         (self.command_queue, self.synth_proc) = softsynth.start_softsynth()
+        self.synth_proc.start()
 
     def play_event(self, note, channel, velocity):
-        self.command_queue.put('noteon', note)
+        print "play", note
+        self.command_queue.put(('noteon', note))
 
-    def stop_event(self, channel, note):
-        self.command_queue.put('noteoff', note)
+    def stop_event(self, note, channel):
+        print "stop", note
+        self.command_queue.put(('noteoff', note))
 
     def cc_event(self, channel, control, value):
         pass
@@ -33,8 +37,9 @@ class SoftsynthSequencer(Sequencer):
 
 def main():
     (composition, bpm) = midi_file_in.MIDI_to_Composition(sys.argv[1])
+    track = filter(lambda t: len(t.bars) != 1, composition.tracks)[0]
     sequencer = SoftsynthSequencer()
-    sequencer.play_Note(80)
+    sequencer.play_Track(track)
 
 if __name__ == '__main__':
     main()

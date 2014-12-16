@@ -33,5 +33,5 @@ python softsynth.py
 Or run the MIDI sequencer:
 
 ```
-python sequencer.py midifile.mid
+python sequencer.py test1.mid
 ```
