@@ -56,9 +56,9 @@ class Instrument(object):
         freq = self.frequency_table.midi_frequencies[note]
         base_freq = SineWaveForm(options, frequency=freq)
         first_overtone = SineWaveForm(options, frequency=freq * 2)
-        first_overtone.max_amplitude = 0.75
+        first_overtone.max_amplitude = 0.24
         second_overtone = SineWaveForm(options, frequency=freq * 3)
-        second_overtone.max_amplitude = 0.5
+        second_overtone.max_amplitude = 0.1
         mixer = Mixer(options)
         mixer.add_source(base_freq, str(base_freq))
         mixer.add_source(first_overtone, str(first_overtone))
@@ -82,12 +82,12 @@ class Synth(object):
         instrument_note.id = token_id
         self.playing[note] = instrument_note
         self.mixer.add_source(instrument_note, token_id)
-        print "Note on"
+        print "Note on", note
 
     def noteoff(self, note):
         instrument_note = self.playing[note]
         self.mixer.remove_source(instrument_note, instrument_note.id)
-        print "Note off"
+        print "Note off", note
 
     def process_command(self, command, arg):
         if command == 'noteon':

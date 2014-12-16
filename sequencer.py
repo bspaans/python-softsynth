@@ -18,11 +18,9 @@ class SoftsynthSequencer(Sequencer):
         self.synth_proc.start()
 
     def play_event(self, note, channel, velocity):
-        print "play", note
         self.command_queue.put(('noteon', note))
 
     def stop_event(self, note, channel):
-        print "stop", note
         self.command_queue.put(('noteoff', note))
 
     def cc_event(self, channel, control, value):
@@ -38,6 +36,7 @@ class SoftsynthSequencer(Sequencer):
 def main():
     (composition, bpm) = midi_file_in.MIDI_to_Composition(sys.argv[1])
     track = filter(lambda t: len(t.bars) != 1, composition.tracks)[0]
+    track = track.transpose('7', True)
     sequencer = SoftsynthSequencer()
     sequencer.play_Track(track)
 

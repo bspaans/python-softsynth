@@ -42,7 +42,7 @@ class PyAudioWriter(Sink):
     def __init__(self, options):
         super(PyAudioWriter, self).__init__(options)
         self.pyaudio = pyaudio.PyAudio()
-        self.BUFFER_SIZE   = 2048
+        self.BUFFER_SIZE   = 2
 
     def open(self):
         self.stream = self.pyaudio.open(format=pyaudio.paInt16 , channels=1, rate=self.sample_rate, output=True)

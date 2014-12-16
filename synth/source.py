@@ -51,7 +51,7 @@ class SineWaveForm(WaveFormSource):
 
 
     def read(self):
-        cycles_per_period = 2 * math.pi * self.frequency / self.sample_rate
+        cycles_per_period = 2 * math.pi * (self.frequency / self.sample_rate)
         t = 0
         while self.nr_of_samples < 0 or t < self.nr_of_samples:
             sine = self.amplitude(t) * math.sin( t * cycles_per_period) * self.max_value
