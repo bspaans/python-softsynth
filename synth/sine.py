@@ -7,6 +7,7 @@ from mingus.midi.sequencer import Sequencer
 from mingus.midi import midi_file_in
 import multiprocessing
 import sys
+import cProfile
 
 STRUCT_PACK_FORMAT = {1: 'b', 2: 'h', 4: 'i', 8: 'q'} # key is byte rate
 
@@ -37,9 +38,10 @@ class BendFrequencyEnveleope(object):
 class SineWave(object):
     def __init__(self, frequency_envelope):
         self.frequency_envelope = frequency_envelope
+        self.sample_rate_adjustment = { 44100: 2.0 * math.pi / 44100.0 }
     def get_amplitude(self, output_options, t):
         freq = self.frequency_envelope.get_frequency(t)
-        cycles_per_period = 2 * math.pi * (float(freq) / output_options.sample_rate)
+        cycles_per_period = self.sample_rate_adjustment[output_options.sample_rate] * freq
         return math.sin(t * cycles_per_period) * output_options.max_value
 
 class Adder(object):
@@ -51,12 +53,14 @@ class Adder(object):
     def stop_source(self, source):
         self.stopped[source] = True
     def get_amplitude(self, output_options, t):
-        values = []
+        num = 0
+        value = 0
         for s in self.sources:
             v = s.get_amplitude(output_options, t)
             if v is not None:
-                values.append(v)
-        return sum(values) / len(values)
+                value += v
+                num += 1
+        return value / num
 
 class FrequencyTable(object):
     def __init__(self, options):
@@ -71,8 +75,8 @@ class FrequencyTable(object):
             self.midi_frequencies[69 + i] = freq
 
 class ConstantNoteEnvelope(object):
-    def get_note(self, options, t):
-        return [(69, t)]
+    def get_notes(self, options, t):
+        return {69:t}
 
 class ArpeggioNoteEnvelope(object):
     def __init__(self):
@@ -81,25 +85,68 @@ class ArpeggioNoteEnvelope(object):
         for x in xrange(1, 13):
             self.pattern2[x] = 56 + x
 
-    def get_note(self, options, t):
+    def get_notes(self, options, t):
         rate = options.sample_rate
-        change_every = rate / 12
+        change_every = rate / 48
         if (t / options.sample_rate) % 2 == 0:
             notes = self.pattern1
         else:
             notes = self.pattern2
         phase = math.floor(t / change_every) % len(notes)
-        return [(notes[phase + 1], t % change_every)]
+        return {notes[phase + 1]: t % change_every}
+
+class RangeBucket(object):
+    def __init__(self, start, stop, slots = 1024):
+        self.buckets = []
+        for x in range(slots):
+            self.buckets.append([])
+        self.start = start
+        self.stop = stop
+        self.slots = slots
+        self.slot_size = (stop - start) / 1024
+
+    def add_item(self, start, stop, item):
+        start_bucket = int(math.floor(start / self.slot_size))
+        stop_bucket = int(math.floor(stop / self.slot_size))
+        for x in xrange(start_bucket, stop_bucket):
+            self.buckets[x].append((start, stop, item))
+
+    def get_notes_from_bucket(self, t):
+        t = t % self.stop
+        bucket = int(math.floor(t / self.slot_size))
+        for (start, stop, items) in self.buckets[bucket]:
+            if t < start or t > stop:
+                continue
+            for n in items:
+                yield((n, t - start))
 
 class TrackNoteEnvelope(object):
-    def __init__(self, track):
-        self.prepare_track(track):
 
-    def prepare_track(self, track):
-        pass
+    def __init__(self, options, track):
+        self.prepare_track(options, track)
 
-    def get_note(self, options, t):
-        pass
+    def prepare_track(self, options, track):
+        self.mega_bar = []
+        minimum = None
+        maximum = None
+        for i, bar in enumerate(track.bars):
+            for b in bar.bar:
+                start = (b[0] + i) * options.sample_rate
+                stop = (1 / b[1]) * options.sample_rate + start
+
+                if minimum is None or start < minimum:
+                    minimum = start
+                if maximum is None or stop > maximum:
+                    maximum = stop
+
+                notes = map(lambda n: int(n) + 24, b[2])
+                self.mega_bar.append((start, stop, notes))
+        self.bucket = RangeBucket(minimum, maximum)
+        for b in self.mega_bar:
+            self.bucket.add_item(*b)
+
+    def get_notes(self, options, t):
+        return self.bucket.get_notes_from_bucket(t)
 
 class Instrument(object):
     def __init__(self, frequency_table, note_envelope):
@@ -112,18 +159,19 @@ class Instrument(object):
     def init(self):
         for note, freq in self.frequency_table.midi_frequencies.iteritems():
             adder = Adder()
-            adder.add_source(SineWave(BendFrequencyEnveleope(0, freq, 500)))
-            adder.add_source(SineWave(BendFrequencyEnveleope(freq * 2, freq * 2, 500)))
-            adder.add_source(SineWave(BendFrequencyEnveleope(freq * 4, freq * 3, 500)))
+            adder.add_source(SineWave(ConstantFrequencyEnvelope(freq)))
+            adder.add_source(SineWave(ConstantFrequencyEnvelope(freq)))
+            adder.add_source(SineWave(ConstantFrequencyEnvelope(freq)))
             self.notes[note] = adder
 
     def get_amplitude(self, options, t):
-        notes = self.note_envelope.get_note(options, t)
         values = []
-        for (note, relative_t) in notes:
+        for note, relative_t in self.note_envelope.get_notes(options, t):
             v = self.notes[note].get_amplitude(options, relative_t)
             if v is not None:
                 values.append(v)
+        if len(values) == 0:
+            return 0
         return sum(values) / len(values)
 
 
@@ -132,8 +180,12 @@ options = Options()
 (composition, bpm) = midi_file_in.MIDI_to_Composition(sys.argv[1])
 track = filter(lambda t: len(t.bars) != 1, composition.tracks)[0]
 
-track_envelope = TrackNoteEnvelope(track)
-instrument = Instrument(FrequencyTable(options), ArpeggioNoteEnvelope())
+track_envelope = TrackNoteEnvelope(options, track)
+instrument = Instrument(FrequencyTable(options), track_envelope)
+
+#do_it=lambda: map(lambda i: instrument.get_amplitude(options, i), xrange(44100))
+#cProfile.run('do_it()')
+#sys.exit(0)
 
 def callback(in_data, frame_count, time_info, status):
     global t, sine, options
