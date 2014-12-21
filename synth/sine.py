@@ -41,8 +41,8 @@ class SineWave(object):
         self.sample_rate_adjustment = { 44100: 2.0 * math.pi / 44100.0 }
     def get_amplitude(self, output_options, t):
         freq = self.frequency_envelope.get_frequency(t)
-        cycles_per_period = self.sample_rate_adjustment[output_options.sample_rate] * freq
-        return math.sin(t * cycles_per_period) * output_options.max_value
+        v = math.sin(self.sample_rate_adjustment[output_options.sample_rate] * freq * t)
+        return v * output_options.max_value
 
 class Adder(object):
     def __init__(self):
@@ -96,18 +96,19 @@ class ArpeggioNoteEnvelope(object):
         return {notes[phase + 1]: t % change_every}
 
 class RangeBucket(object):
-    def __init__(self, start, stop, slots = 1024):
+    def __init__(self, start, stop, slots = 12):
         self.buckets = []
         for x in range(slots):
             self.buckets.append([])
         self.start = start
         self.stop = stop
         self.slots = slots
-        self.slot_size = (stop - start) / 1024
+        self.slot_size = (stop - start) / self.slots
+        print self.start, self.stop, self.slots, self.slot_size
 
     def add_item(self, start, stop, item):
         start_bucket = int(math.floor(start / self.slot_size))
-        stop_bucket = int(math.floor(stop / self.slot_size))
+        stop_bucket = int(math.ceil(stop / self.slot_size))
         for x in xrange(start_bucket, stop_bucket):
             self.buckets[x].append((start, stop, item))
 
@@ -162,38 +163,62 @@ class Instrument(object):
             adder.add_source(SineWave(ConstantFrequencyEnvelope(freq)))
             adder.add_source(SineWave(ConstantFrequencyEnvelope(freq)))
             adder.add_source(SineWave(ConstantFrequencyEnvelope(freq)))
-            self.notes[note] = adder
+            self.notes[note] = SineWave(ConstantFrequencyEnvelope(freq))
 
     def get_amplitude(self, options, t):
-        values = []
+        value = 0
+        playing = 0
         for note, relative_t in self.note_envelope.get_notes(options, t):
             v = self.notes[note].get_amplitude(options, relative_t)
             if v is not None:
-                values.append(v)
-        if len(values) == 0:
+                value += v
+                playing += 1
+        if playing == 0:
             return 0
-        return sum(values) / len(values)
+        return value / playing
+
+class Synth(object):
+    def __init__(self):
+        self.instruments = []
+
+    def add_instrument(self, instrument):
+        self.instruments.append(instrument)
+
+    def get_amplitude(self, options, t):
+        value = 0
+        playing = 0
+        for i in self.instruments:
+            v = i.get_amplitude(options, t)
+            if v != 0.0:
+                value += v
+                playing += 1
+        if playing == 0:
+            return 0
+        return value / playing
 
 
-t = 0
 options = Options()
 (composition, bpm) = midi_file_in.MIDI_to_Composition(sys.argv[1])
-track = filter(lambda t: len(t.bars) != 1, composition.tracks)[0]
+tracks = filter(lambda t: len(t.bars) != 1, composition.tracks)
 
-track_envelope = TrackNoteEnvelope(options, track)
-instrument = Instrument(FrequencyTable(options), track_envelope)
+synth = Synth()
+for t in tracks:
+    instrument = Instrument(FrequencyTable(options), TrackNoteEnvelope(options, t))
+    synth.add_instrument(instrument)
 
-#do_it=lambda: map(lambda i: instrument.get_amplitude(options, i), xrange(44100))
-#cProfile.run('do_it()')
-#sys.exit(0)
+GLOBAL_TIME = 0
+if len(sys.argv) > 2 and sys.argv[2] == "--profile":
+    do_it=lambda: map(lambda i: synth.get_amplitude(options, i), xrange(44100))
+    cProfile.run('do_it()')
+    sys.exit(0)
 
 def callback(in_data, frame_count, time_info, status):
-    global t, sine, options
+    global GLOBAL_TIME, sine, options
     data = []
     for t_frame in xrange(frame_count):
-        sample = struct.pack(options.struct_pack_format, int(instrument.get_amplitude(options, t + t_frame)))
+        sample = struct.pack(options.struct_pack_format, int(synth.get_amplitude(options, int(GLOBAL_TIME + t_frame))))
         data.append(sample)
-    t += frame_count
+    GLOBAL_TIME += frame_count
     return ''.join(data), pyaudio.paContinue
 
 output = pyaudio.PyAudio()
