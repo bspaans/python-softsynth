@@ -312,7 +312,15 @@ amplitude_generator = None
 if "midi" in sys.argv:
     synth = Synth()
     for t in tracks:
-        instrument = PercussionInstrument(FrequencyTable(options), TrackNoteEnvelope(options, t))
+        instr = OvertoneInstrument
+        for b in t.bars:
+            for nc in b.bar:
+                for n in nc[2]:
+                    if hasattr(n, "channel"):
+                        if n.channel == 9:
+                            instr = PercussionInstrument
+                        break
+        instrument = instr(FrequencyTable(options), TrackNoteEnvelope(options, t))
         synth.add_instrument(instrument)
     amplitude_generator = synth
 else:
