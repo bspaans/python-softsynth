@@ -26,7 +26,7 @@ class ConstantFrequencyEnvelope(object):
     def get_frequency(self, options, t):
         return self.freq
 
-class BendFrequencyEnveleope(object):
+class BendFrequencyEnvelope(object):
     def __init__(self, start_freq, end_freq, bend_time = 44100):
         self.start_freq = start_freq
         self.end_freq = end_freq
@@ -83,6 +83,22 @@ class SineWave(object):
         v = math.sin(self.sample_rate_adjustment[output_options.sample_rate] * freq * t)
         return amp * v * output_options.max_value
 
+class SquareWave(object):
+    def __init__(self, frequency_envelope, amplitude_envelope):
+        self.frequency_envelope = frequency_envelope
+        self.sample_rate_adjustment = { 44100: 2.0 * math.pi / 44100.0 }
+        self.amplitude_envelope = amplitude_envelope
+
+    def get_amplitude(self, output_options, t):
+        freq = self.frequency_envelope.get_frequency(options, t)
+        amp  = self.amplitude_envelope.get_amplitude(options, t)
+        v = math.sin(self.sample_rate_adjustment[output_options.sample_rate] * freq * t)
+        if v >= 0:
+            v = 1.0
+        else:
+            v = -1.0
+        return amp * v * output_options.max_value
+
 class RandomWave(object):
     def __init__(self, amplitude_envelope):
         self.amplitude_envelope = amplitude_envelope
@@ -136,7 +152,7 @@ class ArpeggioNoteEnvelope(object):
 
     def get_notes(self, options, t):
         rate = options.sample_rate
-        change_every = rate / 4
+        change_every = rate / 2
         if (t / options.sample_rate) % 2 == 0:
             notes = self.pattern1
         else:
@@ -178,6 +194,7 @@ class TrackNoteEnvelope(object):
         self.mega_bar = []
         minimum = None
         maximum = None
+        print track.bars
         for i, bar in enumerate(track.bars):
             for b in bar.bar:
                 if b[2] == []:
@@ -231,12 +248,15 @@ class OvertoneInstrument(Instrument):
     def init(self):
         for note, freq in self.frequency_table.midi_frequencies.iteritems():
             amp_env = ADSRAmplitudeEnvelope(1.0)
+            amp_env.set_attack(0.01)
+            amp_env.set_decay(0.1)
+            amp_env.set_sustain(0.0)
             freq_env = ConstantFrequencyEnvelope(freq)
             adder = Adder()
             adder.add_source(SineWave(ConstantFrequencyEnvelope(freq), amp_env))
             adder.add_source(SineWave(ConstantFrequencyEnvelope(freq * 2), amp_env))
             adder.add_source(SineWave(ConstantFrequencyEnvelope(freq * 3), amp_env))
-            self.notes[note] = adder #SineWave(ConstantFrequencyEnvelope(freq), amp_env)
+            self.notes[note] = SineWave(ConstantFrequencyEnvelope(freq), amp_env)
 
 class PercussionInstrument(Instrument):
     def __init__(self, frequency_table, note_envelope):
@@ -245,11 +265,11 @@ class PercussionInstrument(Instrument):
     def init(self):
         amp_env = ADSRAmplitudeEnvelope(1.0)
         amp_env.set_attack(0.0000001)
-        amp_env.set_decay(0.5)
+        amp_env.set_decay(0.15)
         amp_env.set_sustain(0.0)
-        freq_env1 = BendFrequencyEnveleope(125, 125, 10)
+        freq_env1 = BendFrequencyEnvelope(60, 50, 10000)
         adder = Adder()
-        adder.add_source(SineWave(freq_env1, amp_env))
+        adder.add_source(SquareWave(freq_env1, amp_env))
         self.notes[47] = adder # kick1
         self.notes[48] = adder # kick2
         amp_env = ADSRAmplitudeEnvelope(1.0)
@@ -287,8 +307,9 @@ options = Options()
 (composition, bpm) = midi_file_in.MIDI_to_Composition(sys.argv[1])
 tracks = filter(lambda t: len(t.bars) != 1, composition.tracks)
 
+print tracks
 amplitude_generator = None
-if "synth" in sys.argv:
+if "midi" in sys.argv:
     synth = Synth()
     for t in tracks:
         instrument = PercussionInstrument(FrequencyTable(options), TrackNoteEnvelope(options, t))
