@@ -22,27 +22,65 @@ class Options(object):
 class ConstantFrequencyEnvelope(object):
     def __init__(self, freq):
         self.freq = freq
-    def get_frequency(self, t):
+    def get_frequency(self, options, t):
         return self.freq
 
 class BendFrequencyEnveleope(object):
-    def __init__(self, start_freq, end_freq, bend_time):
+    def __init__(self, start_freq, end_freq, bend_time = 44100):
         self.start_freq = start_freq
         self.end_freq = end_freq
-        self.bend_time = 44100
-    def get_frequency(self, t):
-        if t < self.bend_time + 1000:
+        self.bend_time = bend_time
+
+    def get_frequency(self, options, t):
+        if t < self.bend_time:
             return self.start_freq + (self.end_freq - self.start_freq) * (float(t) / self.bend_time)
         return self.end_freq
 
+class ConstantAmplitudeEnvelope(object):
+    def __init__(self, max_amplitude):
+        self.max_amplitude = max_amplitude
+    def get_amplitude(self, options, t):
+        return self.max_amplitude
+
+class ADSRAmplitudeEnvelope(object):
+    def __init__(self, max_amplitude = 1.0):
+        self.max_amplitude = max_amplitude
+        self.set_attack(0.01)
+        self.set_decay(0.1)
+        self.set_sustain(0.0)
+        self.set_release(1.0)
+    def set_attack(self, v):
+        self.attack = v
+    def set_decay(self, v):
+        self.decay = v
+    def set_sustain(self, v):
+        self.sustain_level = v
+    def set_release(self, v):
+        self.release = v
+    def get_amplitude(self, options, t, stopped_since = None):
+        attack_time = options.sample_rate * float(self.attack)
+        if t < attack_time:
+            return (t / attack_time) * self.max_amplitude
+        decay_time = options.sample_rate * float(self.decay)
+        if t < attack_time + decay_time:
+            return self.max_amplitude - ((t - attack_time) / decay_time) * (self.max_amplitude - self.sustain_level)
+        if stopped_since is None:
+            return self.sustain_level
+        release_time = options.sample_rate * float(self.release)
+        return self.sustain_level - ((t - stopped_since) / release_time) * self.sustain_level
+
+
 class SineWave(object):
-    def __init__(self, frequency_envelope):
+    def __init__(self, frequency_envelope, amplitude_envelope):
         self.frequency_envelope = frequency_envelope
         self.sample_rate_adjustment = { 44100: 2.0 * math.pi / 44100.0 }
+        self.amplitude_envelope = amplitude_envelope
+
     def get_amplitude(self, output_options, t):
-        freq = self.frequency_envelope.get_frequency(t)
+        freq = self.frequency_envelope.get_frequency(options, t)
+        amp  = self.amplitude_envelope.get_amplitude(options, t)
         v = math.sin(self.sample_rate_adjustment[output_options.sample_rate] * freq * t)
-        return v * output_options.max_value
+        return amp * v * output_options.max_value
 
 class Adder(object):
     def __init__(self):
@@ -76,7 +114,7 @@ class FrequencyTable(object):
 
 class ConstantNoteEnvelope(object):
     def get_notes(self, options, t):
-        return {69:t}
+        return [(69, t)]
 
 class ArpeggioNoteEnvelope(object):
     def __init__(self):
@@ -84,16 +122,17 @@ class ArpeggioNoteEnvelope(object):
         self.pattern2 = {}
         for x in xrange(1, 13):
             self.pattern2[x] = 56 + x
+        self.pattern3 = {1: 64, 2: 69, 3: 72, 4: 57}
 
     def get_notes(self, options, t):
         rate = options.sample_rate
-        change_every = rate / 48
+        change_every = rate / 8
         if (t / options.sample_rate) % 2 == 0:
             notes = self.pattern1
         else:
-            notes = self.pattern2
+            notes = self.pattern3
         phase = math.floor(t / change_every) % len(notes)
-        return {notes[phase + 1]: t % change_every}
+        return [(notes[phase + 1], t % change_every)]
 
 class RangeBucket(object):
     def __init__(self, start, stop, slots = 12):
@@ -104,7 +143,6 @@ class RangeBucket(object):
         self.stop = stop
         self.slots = slots
         self.slot_size = (stop - start) / self.slots
-        print self.start, self.stop, self.slots, self.slot_size
 
     def add_item(self, start, stop, item):
         start_bucket = int(math.floor(start / self.slot_size))
@@ -159,11 +197,13 @@ class Instrument(object):
 
     def init(self):
         for note, freq in self.frequency_table.midi_frequencies.iteritems():
+            amp_env = ADSRAmplitudeEnvelope(1.0)
+            freq_env = ConstantFrequencyEnvelope(freq)
             adder = Adder()
-            adder.add_source(SineWave(ConstantFrequencyEnvelope(freq)))
-            adder.add_source(SineWave(ConstantFrequencyEnvelope(freq)))
-            adder.add_source(SineWave(ConstantFrequencyEnvelope(freq)))
-            self.notes[note] = SineWave(ConstantFrequencyEnvelope(freq))
+            adder.add_source(SineWave(ConstantFrequencyEnvelope(freq), amp_env))
+            adder.add_source(SineWave(BendFrequencyEnveleope(freq * 2 - 100, freq * 2, 5000), amp_env))
+            adder.add_source(SineWave(ConstantFrequencyEnvelope(freq * 3), amp_env))
+            self.notes[note] = SineWave(ConstantFrequencyEnvelope(freq), amp_env)
 
     def get_amplitude(self, options, t):
         value = 0
@@ -201,14 +241,20 @@ options = Options()
 (composition, bpm) = midi_file_in.MIDI_to_Composition(sys.argv[1])
 tracks = filter(lambda t: len(t.bars) != 1, composition.tracks)
 
-synth = Synth()
-for t in tracks:
-    instrument = Instrument(FrequencyTable(options), TrackNoteEnvelope(options, t))
-    synth.add_instrument(instrument)
+amplitude_generator = None
+if "synth" in sys.argv:
+    synth = Synth()
+    for t in tracks:
+        instrument = Instrument(FrequencyTable(options), TrackNoteEnvelope(options, t))
+        synth.add_instrument(instrument)
+    amplitude_generator = synth
+else:
+    instrument = Instrument(FrequencyTable(options), ArpeggioNoteEnvelope())
+    amplitude_generator = instrument
 
 GLOBAL_TIME = 0
-if len(sys.argv) > 2 and sys.argv[2] == "--profile":
-    do_it=lambda: map(lambda i: synth.get_amplitude(options, i), xrange(44100))
+if "--profile" in sys.argv:
+    do_it=lambda: map(lambda i: amplitude_generator.get_amplitude(options, i), xrange(44100))
     cProfile.run('do_it()')
     sys.exit(0)
 
@@ -216,7 +262,7 @@ def callback(in_data, frame_count, time_info, status):
     global GLOBAL_TIME, sine, options
     data = []
     for t_frame in xrange(frame_count):
-        sample = struct.pack(options.struct_pack_format, int(synth.get_amplitude(options, int(GLOBAL_TIME + t_frame))))
+        sample = struct.pack(options.struct_pack_format, int(amplitude_generator.get_amplitude(options, int(GLOBAL_TIME + t_frame))))
         data.append(sample)
     GLOBAL_TIME += frame_count
     return ''.join(data), pyaudio.paContinue
