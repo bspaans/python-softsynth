@@ -24,14 +24,7 @@ sudo pip install -r requirements.txt
 Run
 ===
 
-Run the synth as a TCP server:
-
 ```
-python softsynth.py
+python synth/sine.py test/midi/test1.mid midi
 ```
 
-Or run the MIDI sequencer:
-
-```
-python sequencer.py test1.mid
-```

@@ -9,6 +9,7 @@ import multiprocessing
 import sys
 import random
 import cProfile
+import wave
 
 STRUCT_PACK_FORMAT = {1: 'b', 2: 'h', 4: 'i', 8: 'q'} # key is byte rate
 
@@ -305,6 +306,27 @@ class Synth(object):
             return 0
         return value / playing
 
+class WaveWriter(object):
+
+    def __init__(self, options, filename):
+        super(WaveWriter, self).__init__(options)
+        self.filename      = filename
+
+    def open(self):
+        self.data = []
+
+    def write(self, elem):
+        sample = struct.pack(self.struct_format, int(elem))
+        self.data.append(sample)
+
+    def close(self):
+        w = wave.open(self.filename, "w")
+        w.setnchannels(1)
+        w.setsampwidth(self.byte_rate)
+        w.setframerate(self.sample_rate)
+        w.writeframes(''.join(self.data))
+        w.close()
+        print "Written", self.filename
 
 options = Options()
 (composition, bpm) = midi_file_in.MIDI_to_Composition(sys.argv[1])
