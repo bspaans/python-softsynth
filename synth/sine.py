@@ -274,14 +274,17 @@ class PercussionInstrument(Instrument):
         self.notes[48] = adder # kick2
         amp_env = ADSRAmplitudeEnvelope(1.0)
         self.notes[52] = RandomWave(amp_env) # snare
-        amp_env.set_attack(0.00001)
-        amp_env.set_decay(0.1)
-        amp_env.set_sustain(0.0)
         amp_env = ADSRAmplitudeEnvelope(0.1)
         amp_env.set_attack(0.00001)
         amp_env.set_decay(0.05)
         amp_env.set_sustain(0.0)
         self.notes[54] = RandomWave(amp_env) # closed hihat
+        amp_env = ADSRAmplitudeEnvelope(0.3)
+        amp_env.set_attack(0.0)
+        amp_env.set_decay(2.0)
+        amp_env.set_sustain(1.0)
+        self.notes[61] = RandomWave(amp_env) # crash
+        self.notes[69] = RandomWave(amp_env) # crash
 
 class Synth(object):
     def __init__(self):
