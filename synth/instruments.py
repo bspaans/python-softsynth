@@ -1,7 +1,7 @@
 from envelopes import ADSRAmplitudeEnvelope, BendFrequencyEnvelope, \
                       ConstantFrequencyEnvelope, ConstantAmplitudeEnvelope
 from waves import SineWave, SquareWave, RandomWave, Adder
-from filters import Delay
+from filters import Delay, Filter, Flanger, GlitchFlanger
 
 class BaseInstrument(object):
     def __init__(self, frequency_table, note_envelope):
@@ -35,14 +35,24 @@ class OvertoneInstrument(BaseInstrument):
             amp_env.set_attack(0.001)
             amp_env.set_decay(0.1)
             amp_env.set_sustain(0.0)
+            amp_env2 = ADSRAmplitudeEnvelope(0.5)
+            amp_env2.set_attack(0.001)
+            amp_env2.set_decay(0.1)
+            amp_env2.set_sustain(0.0)
+            amp_env3 = ADSRAmplitudeEnvelope(0.33)
+            amp_env3.set_attack(0.001)
+            amp_env3.set_decay(0.1)
+            amp_env3.set_sustain(0.0)
             freq_env = ConstantFrequencyEnvelope(freq)
             adder = Adder()
-            adder.add_source(SineWave(ConstantFrequencyEnvelope(freq), amp_env))
-            adder.add_source(SineWave(ConstantFrequencyEnvelope(freq * 2), amp_env))
-            adder.add_source(SineWave(ConstantFrequencyEnvelope(freq * 3), amp_env))
+            adder.add_source(SquareWave(ConstantFrequencyEnvelope(freq), amp_env))
+            adder.add_source(SineWave(ConstantFrequencyEnvelope(freq * 2), amp_env2))
+            adder.add_source(SineWave(ConstantFrequencyEnvelope(freq * 3), amp_env3))
             sine = SineWave(ConstantFrequencyEnvelope(freq), amp_env)
             delay = Delay(adder, delay = 1000, wet_dry = 0.75)
-            self.notes[note] = delay # adder # sine
+            filter = Filter(adder)
+            flanger = GlitchFlanger(adder)
+            self.notes[note] = flanger # filter # delay # adder # sine
 
 class PercussionInstrument(BaseInstrument):
     def __init__(self, frequency_table, note_envelope):
