@@ -25,6 +25,6 @@ Run
 ===
 
 ```
-python synth/sine.py test/midi/test1.mid midi
+python synth/synth.py test/midi/test1.mid
 ```
 

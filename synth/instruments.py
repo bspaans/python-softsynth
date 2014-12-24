@@ -1,6 +1,7 @@
 from envelopes import ADSRAmplitudeEnvelope, BendFrequencyEnvelope, \
                       ConstantFrequencyEnvelope, ConstantAmplitudeEnvelope
 from waves import SineWave, SquareWave, RandomWave, Adder
+from filters import Delay
 
 class BaseInstrument(object):
     def __init__(self, frequency_table, note_envelope):
@@ -31,7 +32,7 @@ class OvertoneInstrument(BaseInstrument):
     def init(self):
         for note, freq in self.frequency_table.midi_frequencies.iteritems():
             amp_env = ADSRAmplitudeEnvelope(1.0)
-            amp_env.set_attack(0.01)
+            amp_env.set_attack(0.001)
             amp_env.set_decay(0.1)
             amp_env.set_sustain(0.0)
             freq_env = ConstantFrequencyEnvelope(freq)
@@ -39,7 +40,9 @@ class OvertoneInstrument(BaseInstrument):
             adder.add_source(SineWave(ConstantFrequencyEnvelope(freq), amp_env))
             adder.add_source(SineWave(ConstantFrequencyEnvelope(freq * 2), amp_env))
             adder.add_source(SineWave(ConstantFrequencyEnvelope(freq * 3), amp_env))
-            self.notes[note] = SineWave(ConstantFrequencyEnvelope(freq), amp_env)
+            sine = SineWave(ConstantFrequencyEnvelope(freq), amp_env)
+            delay = Delay(adder, delay = 1000, wet_dry = 0.75)
+            self.notes[note] = delay # adder # sine
 
 class PercussionInstrument(BaseInstrument):
     def __init__(self, frequency_table, note_envelope):

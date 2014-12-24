@@ -38,21 +38,21 @@ class Synth(object):
 class WaveWriter(object):
 
     def __init__(self, options, filename):
-        super(WaveWriter, self).__init__(options)
-        self.filename      = filename
+        self.options = options
+        self.filename = filename
 
     def open(self):
         self.data = []
 
     def write(self, elem):
-        sample = struct.pack(self.struct_format, int(elem))
+        sample = struct.pack(self.options.struct_pack_format, int(elem))
         self.data.append(sample)
 
     def close(self):
         w = wave.open(self.filename, "w")
         w.setnchannels(1)
-        w.setsampwidth(self.byte_rate)
-        w.setframerate(self.sample_rate)
+        w.setsampwidth(self.options.byte_rate)
+        w.setframerate(self.options.sample_rate)
         w.writeframes(''.join(self.data))
         w.close()
         print "Written", self.filename
@@ -73,6 +73,7 @@ def callback(in_data, frame_count, time_info, status):
     return ''.join(data), pyaudio.paContinue
 
 def profile_call():
+    global amplitude_generator
     map(lambda i: amplitude_generator.get_amplitude(options, i), xrange(44100))
 
 def profile():
@@ -111,10 +112,9 @@ def process_midi_files():
             amplitude_generator = synth
             break
 
-
 def main():
-    profile()
     process_midi_files()
+    profile()
     output = pyaudio.PyAudio()
     stream = output.open(format=pyaudio.paInt16, channels=1, 
             rate= 44100, output=True, stream_callback=callback)

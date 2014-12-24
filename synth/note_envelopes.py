@@ -14,7 +14,7 @@ class ArpeggioNoteEnvelope(object):
 
     def get_notes(self, options, t):
         rate = options.sample_rate
-        change_every = rate / 2
+        change_every = rate / 8
         if (t / options.sample_rate) % 2 == 0:
             notes = self.pattern1
         else:
