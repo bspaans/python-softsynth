@@ -53,12 +53,18 @@ class SegmentAmplitudeEnvelope(object):
         for (start, stop, level, arr) in self.segments:
             if phase >= start and phase < stop:
                 index = phase - start
-                max_length = stop - index
-                if max_length >= nr_of_samples - result_length:
-                    result[result_length:nr_of_samples] = arr[index:index+nr_of_samples - result_length]
+                max_length = stop - phase
+                sys.stderr.write("%d %d %d\n" % (start, stop, result_length))
+                if max_length > nr_of_samples - result_length:
+                    result_max_bound = nr_of_samples
+                    arr_max_bound = index + nr_of_samples - result_length
                 else:
-                    result[result_length:result_length + max_length] = arr[index:]
-                result_length += max_length
+                    result_max_bound = result_length + max_length
+                    arr_max_bound = len(arr)
+                result[result_length:result_max_bound] = arr[index:arr_max_bound]
+                result[result_length] += last_level
+                result[result_length] /= 2
+                result_length = result_max_bound
             if result_length >= nr_of_samples:
                 return result
             last_level = level
