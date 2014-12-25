@@ -1,8 +1,22 @@
 import math
+import numpy
 
 class ConstantNoteEnvelope(object):
     def get_notes(self, options, t):
         return [(69, t)]
+
+    def get_notes_for_range(self, options, phase, nr_of_samples):
+        values = [(0, 10000, 69), (10000, 20000, 72), (20000, 30000, 75)]
+        result = []
+        for start, stop, note in values:
+            if phase >= start and phase < stop:
+                length = min(stop - start, nr_of_samples)
+                result.append((0, phase - start, length, note))
+            elif phase + nr_of_samples > start and phase + nr_of_samples < stop:
+                length = nr_of_samples - start
+                result.append((start - phase, 0, nr_of_samples, note))
+        return result
+
 
 class ArpeggioNoteEnvelope(object):
     def __init__(self):
@@ -21,6 +35,32 @@ class ArpeggioNoteEnvelope(object):
             notes = self.pattern3
         phase = math.floor(t / change_every) % len(notes)
         return [(notes[phase + 1], t % change_every)]
+
+    def get_notes_for_range(self, options, phase, nr_of_samples):
+        notes = numpy.zeros(nr_of_samples, dtype=numpy.int)
+        phases = numpy.zeros(nr_of_samples)
+
+        result = []
+        change_every = options.sample_rate / 16
+        for t in xrange(phase, phase + nr_of_samples + change_every - 1, change_every):
+            if (t / options.sample_rate) % 2 == 0:
+                pattern = self.pattern1
+            else:
+                pattern = self.pattern3
+            note_phase = math.floor(t / change_every) % len(pattern)
+            start_period = int(math.floor(t / change_every) * change_every)
+            if start_period >= nr_of_samples + phase:
+                continue
+            if start_period < phase:
+                start = 0
+                length = min(start_period + change_every - phase, nr_of_samples - (t - phase))
+            else:
+                start = start_period - phase
+                length = min(change_every, nr_of_samples - start)
+            result.append((start, t % change_every, length, pattern[note_phase + 1]))
+        return result
+
+
 
 class TrackNoteEnvelope(object):
 
