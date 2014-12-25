@@ -1,5 +1,9 @@
 #!/usr/bin/env python
-import pyaudio
+try:
+    import pyaudio
+except:
+    print "portaudio is not available. Falling back to writing output.wav"
+
 import struct
 import math
 import time
@@ -40,6 +44,7 @@ class WaveWriter(object):
     def __init__(self, options, filename):
         self.options = options
         self.filename = filename
+        self.open()
 
     def open(self):
         self.data = []
@@ -113,16 +118,29 @@ def process_midi_files():
             break
 
 def main():
+    global amplitude_generator
     process_midi_files()
     profile()
-    output = pyaudio.PyAudio()
-    stream = output.open(format=pyaudio.paInt16, channels=1, 
-            rate= 44100, output=True, stream_callback=callback)
-    stream.start_stream()
-    while stream.is_active():
-        time.sleep(0.1)
-    stream.stop_stream()
-    stream.close()
+    if "pyaudio" in globals():
+        output = pyaudio.PyAudio()
+        stream = output.open(format=pyaudio.paInt16, channels=1, 
+                rate= 44100, output=True, stream_callback=callback)
+        stream.start_stream()
+        while stream.is_active():
+            time.sleep(0.1)
+        stream.stop_stream()
+        stream.close()
+    else:
+        output = WaveWriter(options, "output.wav")
+        t = 0
+        try:
+            while True:
+                sample = amplitude_generator.get_amplitude(options, t)
+                output.write(sample)
+                t += 1
+        except KeyboardInterrupt:
+            print "Written", t, "samples" 
+            output.close() 
 
 if __name__ == '__main__':
     main()
