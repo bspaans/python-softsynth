@@ -45,12 +45,16 @@ class Test_SegmentAmplitudeEnvelope(object):
     def setup(self):
         self.unit = SegmentAmplitudeEnvelope()
 
-    def test_add_single_segment(self):
+    def test_add_segment(self):
         level = 1.0
+        level2 = 1.0 - level
         duration = 1000
         self.unit.add_segment(level, duration)
+        self.unit.add_segment(level2, duration)
+
         segment = self.unit.segments[0]
         segment_start, segment_stop, segment_level, segment_arr = segment
+
         assert_equal(segment_start, 0)
         assert_equal(segment_stop, duration)
         assert_equal(segment_level, level)
@@ -58,6 +62,20 @@ class Test_SegmentAmplitudeEnvelope(object):
         assert_almost_equal(segment_arr[0], 0.0)
         assert_almost_equal(segment_arr[(duration - 1) / 2 + 1], level / 2, places = 2)
         assert_almost_equal(segment_arr[duration - 1], level)
+
+        segment = self.unit.segments[1]
+        segment_start, segment_stop, segment_level, segment_arr = segment
+
+        assert_equal(segment_start, duration)
+        assert_equal(segment_stop, duration + duration)
+        assert_equal(segment_level, level2)
+        assert_equal(len(segment_arr), duration)
+        assert_almost_equal(segment_arr[0], level)
+        assert_almost_equal(segment_arr[1], 
+                level + ((level2 - level)/duration), places = 2)
+        assert_almost_equal(segment_arr[(duration - 1) / 2], 
+                level +((level2 - level)/(duration - 1))*(duration - 1) / 2, places = 2)
+        assert_almost_equal(segment_arr[duration - 1], level2)
 
     def test_single_segment_get_samples_for_whole_range_at_phase_zero(self):
         level = 1.0

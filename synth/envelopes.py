@@ -43,7 +43,6 @@ class SegmentAmplitudeEnvelope(object):
         arr = numpy.full([duration], step_size)
         arr[0] = self.last_level 
         arr = arr.cumsum()
-        arr = numpy.add(arr, self.last_level)
         self.segments.append((self.last_position, self.last_position + duration, level, arr))
         self.last_position += duration
         self.last_level = level
