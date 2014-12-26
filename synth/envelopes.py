@@ -39,8 +39,10 @@ class SegmentAmplitudeEnvelope(object):
 
     def add_segment(self, level, duration):
         segment_range = level - self.last_level
-        step_size = segment_range / duration
-        arr = numpy.full([duration], step_size).cumsum()
+        step_size = segment_range / (duration - 1)
+        arr = numpy.full([duration], step_size)
+        arr[0] = self.last_level 
+        arr = arr.cumsum()
         arr = numpy.add(arr, self.last_level)
         self.segments.append((self.last_position, self.last_position + duration, level, arr))
         self.last_position += duration
@@ -54,7 +56,6 @@ class SegmentAmplitudeEnvelope(object):
             if phase >= start and phase < stop:
                 index = phase - start
                 max_length = stop - phase
-                sys.stderr.write("%d %d %d\n" % (start, stop, result_length))
                 if max_length > nr_of_samples - result_length:
                     result_max_bound = nr_of_samples
                     arr_max_bound = index + nr_of_samples - result_length
