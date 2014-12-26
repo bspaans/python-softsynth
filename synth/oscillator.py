@@ -68,15 +68,14 @@ class OvertoneInstrument(Instrument):
         super(OvertoneInstrument, self).__init__(options, note_envelope)
     def init_note(self, options, note, freq):
         amp_env = envelopes.SegmentAmplitudeEnvelope()
-        amp_env.add_segment(1.0, 10000)
-        amp_env.add_segment(0.5, 10000)
-        amp_env.add_segment(0.0, 20000)
+        amp_env.add_segment(1.0, 3000)
+        amp_env.add_segment(0.0, 40000)
         osc1= Oscillator(options, freq, amp_env)
         return [osc1]
 
 class SynthInstrument(Instrument):
     def __init__(self, options, note_envelope):
-        super(OvertoneInstrument, self).__init__(options, note_envelope)
+        super(SynthInstrument, self).__init__(options, note_envelope)
     def init_note(self, options, note, freq):
         amp_env = envelopes.SegmentAmplitudeEnvelope()
         amp_env.add_segment(1.0, 1000)

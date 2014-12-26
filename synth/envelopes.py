@@ -36,6 +36,7 @@ class SegmentAmplitudeEnvelope(object):
         self.segments = []
         self.last_level = 0.0
         self.last_position = 0
+        self.segment_array = numpy.array([])
 
     def add_segment(self, level, duration):
         segment_range = level - self.last_level
@@ -43,35 +44,22 @@ class SegmentAmplitudeEnvelope(object):
         arr = numpy.full([duration], step_size)
         arr[0] = self.last_level 
         arr = arr.cumsum()
-        self.segments.append((self.last_position, self.last_position + duration, level, arr))
+        self.segment_array = numpy.concatenate([self.segment_array, arr])
         self.last_position += duration
         self.last_level = level
 
     def get_amplitudes(self, phase, nr_of_samples):
-        result = numpy.empty([nr_of_samples])
-        result_length = 0
-        last_level = 0.0
-        for (start, stop, level, arr) in self.segments:
-            if phase >= start and phase < stop:
-                index = phase - start
-                max_length = stop - phase
-                if max_length > nr_of_samples - result_length:
-                    result_max_bound = nr_of_samples
-                    arr_max_bound = index + nr_of_samples - result_length
-                else:
-                    result_max_bound = result_length + max_length
-                    arr_max_bound = len(arr)
-                result[result_length:result_max_bound] = arr[index:arr_max_bound]
-                result[result_length] += last_level
-                result[result_length] /= 2
-                result_length = result_max_bound
-            if result_length >= nr_of_samples:
-                return result
-            last_level = level
+        index_start = phase
+        index_stop = phase + nr_of_samples 
+        if index_start >= self.last_position:
+            return numpy.full([nr_of_samples], self.last_level)
+        if index_stop > self.last_position:
+            arr = self.segment_array[index_start:]
+            rest = numpy.full([nr_of_samples - len(arr)], self.last_level)
+            return numpy.concatenate([arr, rest])
+        else:
+            return self.segment_array[index_start:index_stop]
 
-        if result_length < nr_of_samples:
-            result[result_length:] = last_level
-        return result
 
 class ADSRAmplitudeEnvelope(object):
     def __init__(self, max_amplitude = 1.0):

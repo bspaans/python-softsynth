@@ -28,3 +28,10 @@ Run
 python synth/synth.py test/midi/test1.mid
 ```
 
+or for the new, more performant, approach:
+
+```
+python synth/oscillator.py
+```
+
+This one doesn't have midi support though. But it's so fast.

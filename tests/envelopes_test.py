@@ -45,57 +45,40 @@ class Test_SegmentAmplitudeEnvelope(object):
     def setup(self):
         self.unit = SegmentAmplitudeEnvelope()
 
-    def test_add_segment(self):
-        level = 1.0
-        level2 = 1.0 - level
-        duration = 1000
-        self.unit.add_segment(level, duration)
-        self.unit.add_segment(level2, duration)
-
-        segment = self.unit.segments[0]
-        segment_start, segment_stop, segment_level, segment_arr = segment
-
-        assert_equal(segment_start, 0)
-        assert_equal(segment_stop, duration)
-        assert_equal(segment_level, level)
-        assert_equal(len(segment_arr), duration)
-        assert_almost_equal(segment_arr[0], 0.0)
-        assert_almost_equal(segment_arr[(duration - 1) / 2 + 1], level / 2, places = 2)
-        assert_almost_equal(segment_arr[duration - 1], level)
-
-        segment = self.unit.segments[1]
-        segment_start, segment_stop, segment_level, segment_arr = segment
-
-        assert_equal(segment_start, duration)
-        assert_equal(segment_stop, duration + duration)
-        assert_equal(segment_level, level2)
-        assert_equal(len(segment_arr), duration)
-        assert_almost_equal(segment_arr[0], level)
-        assert_almost_equal(segment_arr[1], 
-                level + ((level2 - level)/duration), places = 2)
-        assert_almost_equal(segment_arr[(duration - 1) / 2], 
-                level +((level2 - level)/(duration - 1))*(duration - 1) / 2, places = 2)
-        assert_almost_equal(segment_arr[duration - 1], level2)
-
-    def test_single_segment_get_samples_for_whole_range_at_phase_zero(self):
+    def test_single_segment_get_amplitudes_for_whole_range_at_phase_zero(self):
         level = 1.0
         duration = 1000
         phase = 0
         self.unit.add_segment(level, duration)
-        samples = self.unit.get_amplitudes(phase, duration)
-        assert_equal(len(samples), duration)
-        assert_almost_equal(samples[0], 0.0)
-        assert_almost_equal(samples[duration - 1], level)
+        amplitudes = self.unit.get_amplitudes(phase, duration)
+        assert_equal(len(amplitudes), duration)
+        assert_almost_equal(amplitudes[0], 0.0)
+        assert_almost_equal(amplitudes[duration - 1], level)
 
-    def test_single_segment_get_samples_for_whole_range_at_different_phase(self):
+    def test_single_segment_get_amplitudes_for_whole_range_at_different_phase(self):
         level = 1.0
         duration = 10
         phase = 2
         self.unit.add_segment(level, duration)
-        samples = self.unit.get_amplitudes(phase, duration)
-        assert_equal(len(samples), duration)
-        assert_almost_equal(samples[(duration / 2) - phase], 
+        amplitudes = self.unit.get_amplitudes(phase, duration)
+        assert_equal(len(amplitudes), duration)
+        assert_almost_equal(amplitudes[(duration / 2) - phase], 
                 level / (duration -1) * (duration / 2))
-        assert_almost_equal(samples[duration - phase - 1], 1.0)
-        for t in samples[duration - phase:]:
+        assert_almost_equal(amplitudes[duration - phase - 1], 1.0)
+        for t in amplitudes[duration - phase:]:
             assert_almost_equal(t, 1.0)
+
+    def test_multiple_segments_get_amplitudes_for_whole_range_at_phase_zero(self):
+        level = 1.0
+        level2 = 1.0 - level
+        duration = 1000
+        phase = 0
+        nr_of_samples = duration * 2
+        self.unit.add_segment(level, duration)
+        self.unit.add_segment(level2, duration)
+        amplitudes = self.unit.get_amplitudes(phase, nr_of_samples)
+        assert_equal(len(amplitudes), nr_of_samples)
+        assert_equal(amplitudes[0], 0.0)
+        assert_almost_equal(amplitudes[nr_of_samples - 1], 0.0)
+        assert_almost_equal(amplitudes[duration], level)
+
