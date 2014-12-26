@@ -41,7 +41,7 @@ class ArpeggioNoteEnvelope(object):
         phases = numpy.zeros(nr_of_samples)
 
         result = []
-        change_every = options.sample_rate / 4
+        change_every = options.sample_rate / 1
         for t in xrange(phase, phase + nr_of_samples + change_every - 1, change_every):
             if (t / options.sample_rate) % 2 == 0:
                 pattern = self.pattern1
