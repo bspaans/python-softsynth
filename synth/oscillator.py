@@ -7,6 +7,8 @@ import pstats
 import numpy
 import envelopes
 import note_envelopes
+import wave
+import struct
 
 class SampleGenerator(object):
     def __init__(self, options):
@@ -36,6 +38,49 @@ class Oscillator(SampleGenerator):
             result = numpy.multiply(result, amplitudes)
         self.phase += nr_of_samples
         return result
+
+wavefile_cache = {}
+
+class PCM(SampleGenerator):
+    def __init__(self, options, file, amplitude_envelope = None):
+        super(PCM, self).__init__(options)
+        self.amp_env = amplitude_envelope
+        self.file = file
+        self.load_file(file)
+        self.phase = 0
+
+    def load_file(self, file):
+        global wavefile_cache
+        if file in wavefile_cache:
+            self.length = len(wavefile_cache[file])
+            self.wavefile = wavefile_cache[file]
+            return
+        w = wave.open(file)
+        if w.getframerate() != self.options.sample_rate:
+            raise "sample rate mismatch"
+        if w.getsampwidth() != self.options.byte_rate:
+            raise "byte rate mismatch"
+        if w.getnchannels() != 1:
+            raise "channel mismatch"
+        frames = w.readframes(w.getnframes())
+        samples = struct.unpack(str(w.getnframes()) + self.options.struct_pack_format, frames)
+        self.wavefile = numpy.array([s / float(self.options.max_value) for s in samples])
+        self.length = w.getnframes()
+        w.close()
+        wavefile_cache[file] = self.wavefile
+
+    def get_samples(self, nr_of_samples, release = None):
+        if self.phase > self.length:
+            result = numpy.zeros(nr_of_samples)
+        if self.phase + nr_of_samples < self.length:
+            result = self.wavefile[self.phase:self.phase + nr_of_samples]
+        else:
+            result = numpy.zeros(nr_of_samples)
+            samples = self.length - self.phase
+            result[:samples] = self.wavefile[self.phase:]
+        self.phase += nr_of_samples
+        return result
+
 
 class Instrument(SampleGenerator):
     def __init__(self, options, note_envelope):
@@ -120,6 +165,7 @@ class OvertoneInstrument(Instrument):
         amp_env.add_segment(0.65, 400)
         amp_env.add_segment(0.4, 4000)
         osc1 = Oscillator(options, freq, amp_env)
+        osc1 = PCM(options, "demo/rap_102_c1.wav", amp_env) 
         return [osc1]
 
 class SynthInstrument(Instrument):
@@ -173,12 +219,14 @@ def main():
     plot()
     t= 0
     opts = Options()
-    instr = OvertoneInstrument(opts, note_envelopes.ArpeggioNoteEnvelope())
+    env = note_envelopes.ArpeggioNoteEnvelope()
+    env = note_envelopes.ConstantNoteEnvelope(opts, 68)
+    instr = OvertoneInstrument(opts, env)
     input = instr
     wave = wave_writer.WaveWriter(opts, "output.wav", also_output_to_stdout = True)
     try:
         while True:
-            wave.write_samples(input.get_samples_in_byte_rate(44100))
+            wave.write_samples(input.get_samples_in_byte_rate(1000))
             t += 2000
     except KeyboardInterrupt:
         print "Written", t, "samples" 
