@@ -31,7 +31,7 @@ python synth/synth.py test/midi/test1.mid
 or for the new, more performant, approach:
 
 ```
-python synth/oscillator.py
+python synth/oscillator.py | aplay -f S16_LE -r 44100 -c 1
 ```
 
 This one doesn't have midi support though. But it's so fast.

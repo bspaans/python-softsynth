@@ -18,6 +18,8 @@ class Options(object):
 
         self.two_pi = 2 * math.pi
         self.two_pi_divided_by_sample_rate = self.two_pi / self.sample_rate
+
+        self.oversampling = 8
        
     def get_frequency_table(self):
         return self.frequency_table

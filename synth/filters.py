@@ -1,8 +1,8 @@
 import random
 class Filter(object):
 
-    def __init__(self, amplitude_generator):
-        self.amplitude_generator = amplitude_generator
+    def __init__(self, sample_generators):
+        self.sample_generators = sample_generators
         self.amp_in = 0.5
         self.amp_in_delay1 = 0.5
         self.amp_in_delay2 = 0.30
@@ -27,7 +27,6 @@ class Filter(object):
         self.feedback2 = self.feedback1
         self.feedback1 = value_out
         return value_out
-
 
 class Delay(object):
 

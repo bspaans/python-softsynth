@@ -36,30 +36,59 @@ class SegmentAmplitudeEnvelope(object):
         self.segments = []
         self.last_level = 0.0
         self.last_position = 0
-        self.segment_array = numpy.array([])
+        self.release_time = 50
+        self.segment_array = None
+        self.segment_arrays = []
 
     def add_segment(self, level, duration):
-        segment_range = level - self.last_level
-        step_size = segment_range / (duration - 1)
+        if duration <= 1:
+            step_size = level
+        else:
+            segment_range = level - self.last_level
+            step_size = segment_range / (duration - 1)
+        
         arr = numpy.full([duration], step_size)
         arr[0] = self.last_level 
         arr = arr.cumsum()
-        self.segment_array = numpy.concatenate([self.segment_array, arr])
+        self.segment_arrays.append(arr)
         self.last_position += duration
         self.last_level = level
 
-    def get_amplitudes(self, phase, nr_of_samples):
+    def get_segment_array(self):
+        if self.segment_array is not None:
+            return self.segment_array
+        self.segment_array = numpy.concatenate(self.segment_arrays)
+        return self.segment_array
+
+    def get_amplitudes(self, phase, nr_of_samples, release = None):
         index_start = phase
         index_stop = phase + nr_of_samples 
+        if release is not None:
+            last_level = self.last_level
+            if release <= self.last_position:
+                segments = self.get_segment_array()
+                last_level = segments[release - 1]
+            return self.get_release_amplitudes(nr_of_samples, last_level, phase - release)
         if index_start >= self.last_position:
             return numpy.full([nr_of_samples], self.last_level)
+        segments = self.get_segment_array()
         if index_stop > self.last_position:
-            arr = self.segment_array[index_start:]
+            arr = segments[index_start:]
             rest = numpy.full([nr_of_samples - len(arr)], self.last_level)
-            return numpy.concatenate([arr, rest])
+            return numpy.concatenate((arr, rest))
         else:
-            return self.segment_array[index_start:index_stop]
+            return segments[index_start:index_stop]
 
+    def get_release_amplitudes(self, nr_of_samples, last_level, phase):
+        if phase >= self.release_time or self.last_level == 0.0:
+            return numpy.zeros(nr_of_samples)
+        step_size = last_level / float(self.release_time)
+        result = numpy.full([nr_of_samples], -step_size)
+        result[0] = last_level - (phase * step_size)
+        result = result.cumsum()
+        if phase + nr_of_samples > self.release_time:
+            result[self.release_time - phase:] = 0.0
+        return result
 
 class ADSRAmplitudeEnvelope(object):
     def __init__(self, max_amplitude = 1.0):

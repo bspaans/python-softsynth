@@ -2,21 +2,26 @@ import math
 import numpy
 
 class ConstantNoteEnvelope(object):
+    def __init__(self, options, note):
+        self.options = options
+        self.note = note
+
     def get_notes(self, options, t):
-        return [(69, t)]
+        return [(self.note, t)]
 
     def get_notes_for_range(self, options, phase, nr_of_samples):
-        values = [(0, 10000, 69), (10000, 20000, 72), (20000, 30000, 75)]
-        result = []
-        for start, stop, note in values:
-            if phase >= start and phase < stop:
-                length = min(stop - start, nr_of_samples)
-                result.append((0, phase - start, length, note))
-            elif phase + nr_of_samples > start and phase + nr_of_samples < stop:
-                length = nr_of_samples - start
-                result.append((start - phase, 0, nr_of_samples, note))
-        return result
+        return [(0, phase, nr_of_samples, self.note)]
 
+    def get_samples(self, options, phase, nr_of_samples, sample_generators):
+        result = numpy.zeros(nr_of_samples)
+        sources = 0
+        for s in sample_generators[69]:
+            s.phase = phase
+            result[0:] += s.get_samples(nr_of_samples)
+            sources += 1
+        if sources <= 1:
+            return result
+        return result / float(sources)
 
 class ArpeggioNoteEnvelope(object):
     def __init__(self):
@@ -37,29 +42,27 @@ class ArpeggioNoteEnvelope(object):
         return [(notes[phase + 1], t % change_every)]
 
     def get_notes_for_range(self, options, phase, nr_of_samples):
-        notes = numpy.zeros(nr_of_samples, dtype=numpy.int)
-        phases = numpy.zeros(nr_of_samples)
-
         result = []
-        change_every = options.sample_rate / 1
+        change_every = options.sample_rate / 12
         for t in xrange(phase, phase + nr_of_samples + change_every - 1, change_every):
             if (t / options.sample_rate) % 2 == 0:
                 pattern = self.pattern1
             else:
                 pattern = self.pattern3
-            note_phase = math.floor(t / change_every) % len(pattern)
-            start_period = int(math.floor(t / change_every) * change_every)
-            if start_period >= nr_of_samples + phase:
+            notes_played = int(math.floor( t / change_every))
+            note_phase = notes_played % len(pattern)
+            current_note_started_at = notes_played * change_every
+            if current_note_started_at >= nr_of_samples + phase:
                 continue
-            if start_period < phase:
+            if current_note_started_at < phase:
                 start = 0
-                length = min(start_period + change_every - phase, nr_of_samples - (t - phase))
+                length = min(current_note_started_at + change_every - phase,
+                        nr_of_samples - (t - phase))
             else:
-                start = start_period - phase
+                start = current_note_started_at - phase
                 length = min(change_every, nr_of_samples - start)
             result.append((start, t % change_every, length, pattern[note_phase + 1]))
         return result
-
 
 
 class TrackNoteEnvelope(object):
@@ -71,7 +74,6 @@ class TrackNoteEnvelope(object):
         self.mega_bar = []
         minimum = None
         maximum = None
-        print track.bars
         for i, bar in enumerate(track.bars):
             for b in bar.bar:
                 if b[2] == []:
@@ -87,7 +89,6 @@ class TrackNoteEnvelope(object):
                 notes = map(lambda n: int(n) + 24, b[2])
                 self.mega_bar.append((start, stop, notes))
         self.bucket = RangeBucket(minimum, maximum)
-        print self.mega_bar
         for b in self.mega_bar:
             self.bucket.add_item(*b)
 
