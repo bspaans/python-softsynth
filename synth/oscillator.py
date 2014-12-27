@@ -72,11 +72,12 @@ class PCM(SampleGenerator):
     def get_samples(self, nr_of_samples, release = None):
         if self.phase > self.length:
             result = numpy.zeros(nr_of_samples)
-        if self.phase + nr_of_samples < self.length:
+        elif self.phase + nr_of_samples < self.length:
             result = self.wavefile[self.phase:self.phase + nr_of_samples]
         else:
             result = numpy.zeros(nr_of_samples)
             samples = self.length - self.phase
+            sys.stderr.write("%d %d %d %d\n" % (self.phase, nr_of_samples, self.length, samples))
             result[:samples] = self.wavefile[self.phase:]
         self.phase += nr_of_samples
         return result
