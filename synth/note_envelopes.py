@@ -7,17 +7,17 @@ class NoteEvent(object):
         self.stop_time = stop_time 
         self.note = int(note)
 
-    def get_start_index_for_phase(self, phase):
-        s = self.start_time - phase
+    def get_start_index_for_phase(self, time, phase):
+        s = time - phase
         return 0 if s <= 0 else s
+
+    def get_stop_index_for_phase(self, time, phase, nr_of_samples):
+        s = nr_of_samples if time is None else time - phase
+        return min(s, nr_of_samples)
 
     def get_note_phase_for_phase(self, phase):
         s = self.start_time - phase
         return -s if s <= 0 else 0
-
-    def get_stop_index_for_phase(self, phase, nr_of_samples):
-        s = nr_of_samples if self.stop_time is None else self.stop_time - phase
-        return min(s, nr_of_samples)
 
     def does_this_note_play(self, phase, nr_of_samples):
         if self.stop_time is not None and phase >= self.stop_time:
