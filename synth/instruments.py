@@ -28,9 +28,8 @@ class BaseInstrument(SampleGenerator):
         result = numpy.zeros(nr_of_samples)
         notes = self.note_envelope.get_notes_for_range(self.options, phase, nr_of_samples)
         self.notes_playing = self.notes_playing.union(notes)
-        (sources_p, result) = self.render_playing_notes(result, sources_arr, nr_of_samples, phase)
-        (sources_s, result) = self.render_stopped_notes(result, sources_arr, nr_of_samples, phase)
-        sources_arr += sources_p + sources_s
+        (sources_arr, result) = self.render_playing_notes(result, sources_arr, nr_of_samples, phase)
+        (sources_arr, result) = self.render_stopped_notes(result, sources_arr, nr_of_samples, phase)
         sources_arr = numpy.add(sources_arr, numpy.where(sources_arr == 0.0, 1.0, 0.0))
         return result / sources_arr
 
@@ -77,6 +76,10 @@ class BaseInstrument(SampleGenerator):
                 samples = sample_generator.get_samples(length, note_phase, release = p.stop_time)
                 result[start_index:] += samples
                 sources_arr[start_index:] += 1
+                for i, s in enumerate(reversed(samples)):
+                    if s != 0.0:
+                        break
+                    sources_arr[-(i + 1)] -= 1
                 postfix_len = min(len(samples), 4)
                 if (samples[-postfix_len:] <= [0] * postfix_len).all():
                     stopped.add(p)

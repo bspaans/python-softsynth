@@ -2,6 +2,7 @@ from nose.tools import *
 from synth.instruments import BaseInstrument 
 from synth.options import Options
 from synth.note_envelopes import NoteEvent
+import numpy
 
 
 class Test_BaseInstrument(object):
@@ -17,11 +18,9 @@ class Test_BaseInstrument(object):
             self.note = note
         def get_samples(self, nr_of_samples, phase, release = None):
             if release is not None:
-                return [0.0] * nr_of_samples
-            result = []
-            for t in xrange(nr_of_samples):
-                result.append(self.note + phase)
-            return result
+                return numpy.zeros(nr_of_samples)
+            result = numpy.arange(phase, phase + nr_of_samples)
+            return result + self.note
 
     def init_note(self, options, note, freq):
         return [Test_BaseInstrument.DummySampleGenerator(note)]
@@ -29,7 +28,7 @@ class Test_BaseInstrument(object):
     def test_get_samples_one_note_one_phase(self):
         options = Options()
         notes = Test_BaseInstrument.DummyNoteEnvelope(
-                lambda phase, nr_of_samples: [NoteEvent(0, 1, 69)])
+                lambda phase, nr_of_samples: [NoteEvent(0, 10, 69)])
         BaseInstrument.init_note = self.init_note
         self.unit = BaseInstrument(options, notes)
         samples = self.unit.get_samples(10, 0)
@@ -40,7 +39,7 @@ class Test_BaseInstrument(object):
     def test_get_samples_one_note_multiple_phases(self):
         options = Options()
         notes = Test_BaseInstrument.DummyNoteEnvelope(
-                lambda phase, nr_of_samples: [NoteEvent(phase, 1, phase + 69)])
+                lambda phase, nr_of_samples: [NoteEvent(0, 20, 69)])
         BaseInstrument.init_note = self.init_note
         self.unit = BaseInstrument(options, notes)
         samples = self.unit.get_samples(10, 0)
@@ -68,22 +67,20 @@ class Test_BaseInstrument(object):
     def test_get_samples_two_half_notes_one_phase(self):
         options = Options()
         notes = Test_BaseInstrument.DummyNoteEnvelope(
-                lambda phase, nr_of_samples: [(0, 0, nr_of_samples / 2, 69), 
-                    (nr_of_samples / 2, 0, nr_of_samples / 2, 10)])
-        notes = Test_BaseInstrument.DummyNoteEnvelope(
-                lambda phase, nr_of_samples: [NoteEvent(0, nr_of_samples / 2, 69),
-                    NoteEvent(nr_of_samples / 2, nr_of_samples /2, 10)])
+                lambda phase, nr_of_samples: [NoteEvent(0, 5, 69),
+                    NoteEvent(5, 10, 10)])
         BaseInstrument.init_note = self.init_note
         self.unit = BaseInstrument(options, notes)
         samples = self.unit.get_samples(10, 0)
         assert_equal(len(samples), 10)
-        assert_equal(samples[0], 69 / 2.0)
-        assert_equal(samples[1], 70 / 2.0)
-        assert_equal(samples[2], 71 / 2.0)
-        assert_equal(samples[3], 72 / 2.0)
-        assert_equal(samples[4], 73 / 2.0)
-        assert_equal(samples[5], 10 / 2.0)
-        assert_equal(samples[6], 11 / 2.0)
-        assert_equal(samples[7], 12 / 2.0)
-        assert_equal(samples[8], 13 / 2.0)
-        assert_equal(samples[9], 14 / 2.0)
+        print samples
+        assert_equal(samples[0], 69)
+        assert_equal(samples[1], 70)
+        assert_equal(samples[2], 71)
+        assert_equal(samples[3], 72)
+        assert_equal(samples[4], 73)
+        assert_equal(samples[5], 10)
+        assert_equal(samples[6], 11)
+        assert_equal(samples[7], 12)
+        assert_equal(samples[8], 13)
+        assert_equal(samples[9], 14)
