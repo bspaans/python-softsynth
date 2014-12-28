@@ -64,6 +64,48 @@ class ArpeggioNoteEnvelope(object):
             result.append((start, t % change_every, length, pattern[note_phase + 1]))
         return result
 
+class MidiTrackNoteEnvelope(object):
+    def __init__(self, options, track, ticks_per_beat):
+        self.options = options
+        self.ticks_per_beat = float(ticks_per_beat)
+        self.bpm = 150.0
+        self.seconds_per_beat = 60 / self.bpm
+        self.prepare_track(track)
+
+    def prepare_track(self, track):
+        result = []
+        track.replace_note_off_with_stop_time_on_note_on()
+        for event in track.events:
+            if event.event_type in [8, 9]:
+                start_at_beat = event.start_time / self.ticks_per_beat
+                start_at_second = start_at_beat * self.seconds_per_beat
+                event.start_time = int(start_at_second * self.options.sample_rate)
+                
+                if event.stop_time is not None:
+                    stop_at_beat = event.stop_time / self.ticks_per_beat
+                    stop_at_second = stop_at_beat * self.seconds_per_beat
+                    event.stop_time = int(stop_at_second * self.options.sample_rate)
+                result.append(event)
+        self.events = result
+        self.event_pointer = 0
+
+    def get_notes_for_range(self, options, phase, nr_of_samples):
+        result = []
+        while self.event_pointer < len(self.events) and \
+                self.events[self.event_pointer].start_time <= phase + nr_of_samples:
+            event  = self.events[self.event_pointer]
+            if event.start_time >= phase:
+                result.append(NoteEvent(event.start_time, event.stop_time, \
+                        event.param1))
+            self.event_pointer += 1
+        return result
+
+class NoteEvent(object):
+    def __init__(self, start_time, stop_time, note):
+        self.start_time = start_time 
+        self.stop_time = stop_time 
+        self.note = int(note)
+
 
 class TrackNoteEnvelope(object):
 

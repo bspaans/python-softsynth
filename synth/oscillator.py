@@ -9,6 +9,7 @@ import envelopes
 import note_envelopes
 import wave
 import struct
+from midi.MidiFileParser import MidiFileParser
 
 class SampleGenerator(object):
     def __init__(self, options):
@@ -68,6 +69,7 @@ class PCM(SampleGenerator):
         self.length = w.getnframes()
         w.close()
         wavefile_cache[file] = self.wavefile
+        sys.stderr.write("Loaded %s\n" % file)
 
     def get_samples(self, nr_of_samples, release = None):
         if self.phase > self.length:
@@ -77,11 +79,78 @@ class PCM(SampleGenerator):
         else:
             result = numpy.zeros(nr_of_samples)
             samples = self.length - self.phase
-            sys.stderr.write("%d %d %d %d\n" % (self.phase, nr_of_samples, self.length, samples))
             result[:samples] = self.wavefile[self.phase:]
         self.phase += nr_of_samples
         return result
 
+class NewInstrument(SampleGenerator):
+    def __init__(self, options, note_envelope):
+        super(NewInstrument, self).__init__(options)
+        self.notes = {}
+        self.note_envelope = note_envelope
+        self.init(options)
+        self.phase = 0
+
+        self.notes_playing = set()
+        self.notes_stopped = set()
+
+    def init(self, options):
+        for note, freq in options.frequency_table.midi_frequencies.iteritems():
+            self.notes[note] = self.init_note(options, note, freq)
+    def init_note(self, options, note, freq):
+        return None
+    def get_samples(self, nr_of_samples):
+        result = numpy.zeros(nr_of_samples)
+        sources = 0
+        self.get_and_setnew_playing_notes(nr_of_samples)
+        (sources_p, result) = self.render_playing_notes(result, nr_of_samples)
+        (sources_s, result) = self.render_stopped_notes(result, nr_of_samples)
+        self.phase += nr_of_samples
+        sources += sources_p + sources_s
+        return result / float(sources)
+
+    def get_and_setnew_playing_notes(self, nr_of_samples):
+        notes = self.note_envelope.get_notes_for_range(self.options, 
+                self.phase, nr_of_samples)
+        self.notes_playing = self.notes_playing.union(notes)
+
+    def render_playing_notes(self, result, nr_of_samples):
+        sources = 0
+        for p in self.notes_playing:
+            if p.stop_time is not None and self.phase >= p.stop_time:
+                continue
+            if self.phase + nr_of_samples <= p.start_time:
+                continue
+
+            relative_start_time = p.start_time - self.phase
+            relative_stop_time = nr_of_samples if p.stop_time is None else p.stop_time - self.phase
+            if relative_start_time <= 0:
+                start_index = 0
+                note_phase = -relative_start_time
+            else:
+                start_index = relative_start_time
+                note_phase = 0
+            stop_index = min(relative_stop_time, nr_of_samples)
+            length = stop_index - start_index
+
+            for sample_generator in self.notes[p.note]:
+                sample_generator.phase = note_phase
+                result[start_index:stop_index] += sample_generator.get_samples(length)
+                sources += 1
+        return (sources, result)
+
+    def remove_stopped_playing_notes(self, nr_of_samples):
+        remove = set()
+        for p in self.notes_playing:
+            if p.stop_time is not None and self.phase + nr_of_samples >= p.stop_time:
+                remove.add(p)
+        for r in remove:
+            self.notes_playing.remove(r)
+            self.notes_stopped.add(r)
+
+    def render_stopped_notes(self, result, nr_of_samples):
+        self.remove_stopped_playing_notes(nr_of_samples)
+        return (1, result)
 
 class Instrument(SampleGenerator):
     def __init__(self, options, note_envelope):
@@ -157,7 +226,7 @@ class Instrument(SampleGenerator):
         self.last_level = result[-1]
         return result
 
-class OvertoneInstrument(Instrument):
+class OvertoneInstrument(NewInstrument):
     def __init__(self, options, note_envelope):
         super(OvertoneInstrument, self).__init__(options, note_envelope)
     def init_note(self, options, note, freq):
@@ -165,8 +234,8 @@ class OvertoneInstrument(Instrument):
         amp_env.release_time = 10
         amp_env.add_segment(0.65, 400)
         amp_env.add_segment(0.4, 4000)
-        osc1 = Oscillator(options, freq, amp_env)
-        osc1 = PCM(options, "demo/rap_102_c1.wav", amp_env) 
+        osc1 = Oscillator(options, freq) #, amp_env)
+        #osc1 = PCM(options, "demo/rap_102_c1.wav", amp_env) 
         return [osc1]
 
 class SynthInstrument(Instrument):
@@ -214,16 +283,34 @@ def plot():
         raw_input('Please press return to continue...\n')
         sys.exit(0)
 
+def create_synth_from_midi_tracks(header, tracks):
+    options = Options()
+    ticks_per_beat = header["time_division"]['ticks_per_beat']
+    for t in tracks:
+        instr = OvertoneInstrument
+        instrument = instr(options, note_envelopes.MidiTrackNoteEnvelope(options, t, ticks_per_beat))
+        return instrument
+
+def process_midi_files():
+    global amplitude_generator
+    for f in sys.argv:
+        if ".mid" in f:
+            (header, tracks) = MidiFileParser().parse_midi_file(sys.argv[1])
+            tracks = filter(lambda t: len(filter(lambda x: x.event_type in [8,9], t.events)) != 0, tracks)
+            synth = create_synth_from_midi_tracks(header, tracks)
+            return synth
 
 def main():
+    input = process_midi_files()
     profile()
     plot()
     t= 0
     opts = Options()
-    env = note_envelopes.ArpeggioNoteEnvelope()
-    env = note_envelopes.ConstantNoteEnvelope(opts, 68)
-    instr = OvertoneInstrument(opts, env)
-    input = instr
+    if input is None:
+        env = note_envelopes.ArpeggioNoteEnvelope()
+        env = note_envelopes.ConstantNoteEnvelope(opts, 68)
+        instr = OvertoneInstrument(opts, env)
+        input = instr
     wave = wave_writer.WaveWriter(opts, "output.wav", also_output_to_stdout = True)
     try:
         while True:
