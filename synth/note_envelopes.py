@@ -60,13 +60,14 @@ class ArpeggioNoteEnvelope(object):
         return result
 
 class MidiTrackNoteEnvelope(object):
-    def __init__(self, options, track, ticks_per_beat, bpm = 120.0):
+    def __init__(self, options, track, ticks_per_beat):
         self.options = options
         self.ticks_per_beat = float(ticks_per_beat)
-        self.bpm = bpm
+        self.bpm = options.bpm
         self.seconds_per_beat = 60.0 / self.bpm
         self.samples_per_beat = self.options.sample_rate * self.seconds_per_beat
         self.samples_per_tick = self.samples_per_beat / self.ticks_per_beat
+        self.loop = True
         self.prepare_track(track)
 
     def prepare_track(self, track):
@@ -80,14 +81,22 @@ class MidiTrackNoteEnvelope(object):
                 result.append(event)
         self.events = result
         self.event_pointer = 0
+        self.nr_of_events = len(self.events)
+        self.track_length = max(map(lambda s: 0.0 if s.stop_time is None else s.stop_time, self.events))
+        self.nr_of_loops = 0
 
     def get_notes_for_range(self, options, phase, nr_of_samples):
         result = []
-        while self.event_pointer < len(self.events) and \
-                self.events[self.event_pointer].start_time <= phase + nr_of_samples:
-            event  = self.events[self.event_pointer]
-            if event.start_time >= phase:
-                result.append(NoteEvent(event.start_time, event.stop_time, \
+        while self.event_pointer < self.nr_of_events and \
+                self.events[self.event_pointer].start_time + self.nr_of_loops * self.track_length <= phase + nr_of_samples:
+
+            event = self.events[self.event_pointer]
+            offset = self.nr_of_loops * self.track_length
+            if event.start_time + offset >= phase:
+                result.append(NoteEvent(event.start_time + offset, event.stop_time + offset, \
                         event.param1))
             self.event_pointer += 1
+            if self.loop and self.event_pointer >= self.nr_of_events:
+                self.event_pointer = self.event_pointer % self.nr_of_events
+                self.nr_of_loops += 1
         return result
