@@ -83,9 +83,9 @@ class PCM(SampleGenerator):
         self.phase += nr_of_samples
         return result
 
-class NewInstrument(SampleGenerator):
+class BaseInstrument(SampleGenerator):
     def __init__(self, options, note_envelope):
-        super(NewInstrument, self).__init__(options)
+        super(BaseInstrument, self).__init__(options)
         self.notes = {}
         self.note_envelope = note_envelope
         self.init(options)
@@ -102,14 +102,16 @@ class NewInstrument(SampleGenerator):
     def get_samples(self, nr_of_samples):
         result = numpy.zeros(nr_of_samples)
         sources = 0
-        self.get_and_setnew_playing_notes(nr_of_samples)
+        self.get_and_set_new_playing_notes(nr_of_samples)
         (sources_p, result) = self.render_playing_notes(result, nr_of_samples)
         (sources_s, result) = self.render_stopped_notes(result, nr_of_samples)
         self.phase += nr_of_samples
         sources += sources_p + sources_s
+        if sources <= 1:
+            return result
         return result / float(sources)
 
-    def get_and_setnew_playing_notes(self, nr_of_samples):
+    def get_and_set_new_playing_notes(self, nr_of_samples):
         notes = self.note_envelope.get_notes_for_range(self.options, 
                 self.phase, nr_of_samples)
         self.notes_playing = self.notes_playing.union(notes)
@@ -117,20 +119,12 @@ class NewInstrument(SampleGenerator):
     def render_playing_notes(self, result, nr_of_samples):
         sources = 0
         for p in self.notes_playing:
-            if p.stop_time is not None and self.phase >= p.stop_time:
-                continue
-            if self.phase + nr_of_samples <= p.start_time:
+            if not p.does_this_note_play(self.phase, nr_of_samples):
                 continue
 
-            relative_start_time = p.start_time - self.phase
-            relative_stop_time = nr_of_samples if p.stop_time is None else p.stop_time - self.phase
-            if relative_start_time <= 0:
-                start_index = 0
-                note_phase = -relative_start_time
-            else:
-                start_index = relative_start_time
-                note_phase = 0
-            stop_index = min(relative_stop_time, nr_of_samples)
+            start_index = p.get_start_index_for_phase(self.phase)
+            stop_index = p.get_stop_index_for_phase(self.phase, nr_of_samples)
+            note_phase =  p.get_note_phase_for_phase(self.phase)
             length = stop_index - start_index
 
             for sample_generator in self.notes[p.note]:
@@ -142,7 +136,7 @@ class NewInstrument(SampleGenerator):
     def remove_stopped_playing_notes(self, nr_of_samples):
         remove = set()
         for p in self.notes_playing:
-            if p.stop_time is not None and self.phase + nr_of_samples >= p.stop_time:
+            if p.stop_time is not None and self.phase + nr_of_samples > p.stop_time:
                 remove.add(p)
         for r in remove:
             self.notes_playing.remove(r)
@@ -150,95 +144,40 @@ class NewInstrument(SampleGenerator):
 
     def render_stopped_notes(self, result, nr_of_samples):
         self.remove_stopped_playing_notes(nr_of_samples)
-        return (1, result)
-
-class Instrument(SampleGenerator):
-    def __init__(self, options, note_envelope):
-        super(Instrument, self).__init__(options)
-        self.notes = {}
-        self.note_envelope = note_envelope
-        self.init(options)
-        self.phase = 0
-        self.currently_playing = set()
-        self.currently_stopped = set()
-        self.last_level = 0.0
-
-    def init(self, options):
-        for note, freq in options.frequency_table.midi_frequencies.iteritems():
-            self.notes[note] = self.init_note(options, note, freq)
-    def init_note(self, options, note, freq):
-        return None
-    def get_samples(self, nr_of_samples):
-        result = numpy.zeros(nr_of_samples)
         sources = 0
-        notes = self.note_envelope.get_notes_for_range(self.options, 
-                self.phase, nr_of_samples)
-        arrays = []
-        playing = set()
-        stopped = self.currently_stopped.copy()
-        notes_playing = set()
-        already_stopped = set()
-        for (start, phase, length, note) in notes:
-            arr = numpy.zeros(nr_of_samples)
-            for sample_generator in self.notes[note]:
-                sample_generator.phase = phase
-                result[start:start+length] += sample_generator.get_samples(length)
-                sources += 1
-            if start + length < nr_of_samples:
-                stopped.add((self.phase + start + length, note))
-                already_stopped.add((self.phase - (start + phase), note))
+        stopped = set()
+        for p in self.notes_stopped:
+            if self.phase > p.stop_time:
+                start_index = 0
+                note_phase = self.phase
             else:
-                notes_playing.add((self.phase - (start + phase), note))
-        for previously_playing in self.currently_playing:
-            if previously_playing not in notes_playing and previously_playing not in already_stopped:
-                stopped.add((self.phase, note))
-        self.currently_playing = notes_playing
-
-        for (stopped_at, stopped_note) in stopped:
-            if stopped_at >= self.phase:
-                index = stopped_at - self.phase
-                phase = stopped_at
-                length = self.phase + nr_of_samples - stopped_at
-            else:
-                index = 0
-                phase = self.phase
-                length = nr_of_samples
-
-            for sample_generator in self.notes[stopped_note]:
-                sample_generator.phase = phase
-                samples = sample_generator.get_samples(length, release = stopped_at)
-                result[index:] += samples
+                start_index = p.stop_time - self.phase
+                note_phase = p.stop_time
+            length = nr_of_samples - start_index
+            for sample_generator in self.notes[p.note]:
+                sample_generator.phase = note_phase
+                samples = sample_generator.get_samples(length, release = p.stop_time)
+                result[start_index:] += samples
                 sources += 1
-                if not (samples[-4:] == [0,0,0,0]).all():
-                    self.currently_stopped.add((stopped_at, stopped_note))
-                else: 
-                    if (stopped_at, stopped_note) in self.currently_stopped:
-                        self.currently_stopped.remove((stopped_at, stopped_note))
+                if (samples[-4:] == [0,0,0,0]).all():
+                    stopped.add(p)
+        for s in stopped:
+            self.notes_stopped.remove(s)
+        return (sources, result)
 
-        result[0] += self.last_level
-        result[0] /= 2.0
-
-        self.phase += nr_of_samples
-        if sources <= 1:
-            self.last_level = result[-1]
-            return result
-        result = result / float(sources)
-        self.last_level = result[-1]
-        return result
-
-class OvertoneInstrument(NewInstrument):
+class OvertoneInstrument(BaseInstrument):
     def __init__(self, options, note_envelope):
         super(OvertoneInstrument, self).__init__(options, note_envelope)
     def init_note(self, options, note, freq):
         amp_env = envelopes.SegmentAmplitudeEnvelope()
-        amp_env.release_time = 10
-        amp_env.add_segment(0.65, 400)
+        amp_env.release_time = 100
+        amp_env.add_segment(1.0, 4000)
         amp_env.add_segment(0.4, 4000)
-        osc1 = Oscillator(options, freq) #, amp_env)
+        osc1 = Oscillator(options, freq, amp_env)
         #osc1 = PCM(options, "demo/rap_102_c1.wav", amp_env) 
         return [osc1]
 
-class SynthInstrument(Instrument):
+class SynthInstrument(BaseInstrument):
     def __init__(self, options, note_envelope):
         super(SynthInstrument, self).__init__(options, note_envelope)
     def init_note(self, options, note, freq):
