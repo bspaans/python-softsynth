@@ -1,9 +1,10 @@
-from synth.synthesizer import SampleGenerator
+from synth.interfaces import SampleGenerator
 from synth.envelopes import SegmentAmplitudeEnvelope
 from synth.oscillator import Oscillator, OscillatorWithAmplitudeEnvelope
 import numpy
 
 class BaseInstrument(SampleGenerator):
+
     def __init__(self, options, note_envelope):
         super(BaseInstrument, self).__init__(options)
         self.notes = {}
@@ -15,21 +16,19 @@ class BaseInstrument(SampleGenerator):
     def init(self, options):
         for note, freq in options.frequency_table.midi_frequencies.iteritems():
             self.notes[note] = self.init_note(options, note, freq)
+
     def init_note(self, options, note, freq):
         return None
+
     def get_samples(self, nr_of_samples, phase, release = None):
         sources = 0
         result = numpy.zeros(nr_of_samples)
-        self.get_and_set_new_playing_notes(nr_of_samples, phase)
+        notes = self.note_envelope.get_notes_for_range(self.options, phase, nr_of_samples)
+        self.notes_playing = self.notes_playing.union(notes)
         (sources_p, result) = self.render_playing_notes(result, nr_of_samples, phase)
         (sources_s, result) = self.render_stopped_notes(result, nr_of_samples, phase)
         sources += sources_p + sources_s
         return result if sources <= 1 else result / float(sources)
-
-    def get_and_set_new_playing_notes(self, nr_of_samples, phase):
-        notes = self.note_envelope.get_notes_for_range(self.options, 
-                phase, nr_of_samples)
-        self.notes_playing = self.notes_playing.union(notes)
 
     def render_playing_notes(self, result, nr_of_samples, phase):
         sources = 0

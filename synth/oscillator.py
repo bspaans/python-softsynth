@@ -1,4 +1,4 @@
-from synth.synthesizer import SampleGenerator
+from synth.interfaces import SampleGenerator
 import numpy
 
 class Oscillator(SampleGenerator):

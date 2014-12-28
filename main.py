@@ -1,8 +1,8 @@
 import sys
 import cProfile
 import pstats
+from synth.synthesizer import Synthesizer
 from synth.wave_writer import WaveWriter
-from synth.midi.MidiFileParser import MidiFileParser
 from synth.options import Options
 from synth.instruments import OvertoneInstrument
 from synth.note_envelopes import ArpeggioNoteEnvelope,\
@@ -42,22 +42,10 @@ def plot():
         raw_input('Please press return to continue...\n')
         sys.exit(0)
 
-def create_synth_from_midi_tracks(header, tracks):
-    options = Options()
-    ticks_per_beat = header["time_division"]['ticks_per_beat']
-    for t in tracks:
-        instr = OvertoneInstrument
-        instrument = instr(options, MidiTrackNoteEnvelope(options, t, ticks_per_beat))
-        return instrument
-
 def process_midi_files():
-    global amplitude_generator
     for f in sys.argv:
         if ".mid" in f:
-            (header, tracks) = MidiFileParser().parse_midi_file(sys.argv[1])
-            tracks = filter(lambda t: len(filter(lambda x: x.event_type in [8,9], t.events)) != 0, tracks)
-            synth = create_synth_from_midi_tracks(header, tracks)
-            return synth
+            return Synthesizer(Options()).load_from_midi(f)
 
 def main():
     input = process_midi_files()
