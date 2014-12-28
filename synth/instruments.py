@@ -14,6 +14,7 @@ class BaseInstrument(SampleGenerator):
         self.init(options)
         self.notes_playing = set()
         self.notes_stopped = set()
+        self.max_sources = 1
 
     def init(self, options):
         for note, freq in options.frequency_table.midi_frequencies.iteritems():
@@ -30,6 +31,7 @@ class BaseInstrument(SampleGenerator):
         (sources_p, result) = self.render_playing_notes(result, nr_of_samples, phase)
         (sources_s, result) = self.render_stopped_notes(result, nr_of_samples, phase)
         sources += sources_p + sources_s
+        return result / 1.58 if sources != 0 else result
         return result if sources <= 1 else result / float(sources)
 
     def render_playing_notes(self, result, nr_of_samples, phase):
@@ -142,8 +144,9 @@ class PercussionInstrument(BaseInstrument):
             amp_env = SegmentAmplitudeEnvelope()
             amp_env.release_time = 100
             amp_env.add_segment(0.3, 1)
-            amp_env.add_segment(1.0, 5000)
-            amp_env.add_segment(0.8, 10000)
+            amp_env.add_segment(1.0, 4000)
+            amp_env.add_segment(1.0, 6000)
+            amp_env.add_segment(0.5, 10000)
             osc = RandomOscillatorWithAmplitudeEnvelope(options, amp_env, freq = 100)
             return [osc]
         return []

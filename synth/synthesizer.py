@@ -29,11 +29,10 @@ class Synthesizer(SampleGenerator):
         self.instruments.append(instrument)
 
     def get_samples(self, nr_of_samples, phase, release = None):
-        sources = 0
         result = None
         for i in self.instruments:
             samples = i.get_samples(nr_of_samples, phase, release)
             result = samples if result is None else numpy.add(result, samples)
-            sources += 1
+        sources = len(self.instruments)
         return result if sources <= 1 else result / float(sources)
 
