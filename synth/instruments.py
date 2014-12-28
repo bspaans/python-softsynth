@@ -31,7 +31,6 @@ class BaseInstrument(SampleGenerator):
         (sources_p, result) = self.render_playing_notes(result, nr_of_samples, phase)
         (sources_s, result) = self.render_stopped_notes(result, nr_of_samples, phase)
         sources += sources_p + sources_s
-        return result / 1.58 if sources != 0 else result
         return result if sources <= 1 else result / float(sources)
 
     def render_playing_notes(self, result, nr_of_samples, phase):
@@ -79,7 +78,8 @@ class BaseInstrument(SampleGenerator):
                 samples = sample_generator.get_samples(length, note_phase, release = p.stop_time)
                 result[start_index:] += samples
                 sources += 1
-                if (samples[-4:] <= [0,0,0,0]).all():
+                postfix_len = min(len(samples), 4)
+                if (samples[-postfix_len:] <= [0] * postfix_len).all():
                     stopped.add(p)
         for s in stopped:
             self.notes_stopped.remove(s)

@@ -1,25 +1,5 @@
 from nose.tools import *
-from synth.envelopes import ConstantFrequencyEnvelope, \
-        ConstantAmplitudeEnvelope, SegmentAmplitudeEnvelope
-
-class Test_ConstantFrequencyEnvelope(object):
-
-    def setup(self):
-        self.freq = 100.0
-        self.nr_of_samples = 1000
-        self.unit = ConstantFrequencyEnvelope(self.freq)
-
-    def test_at_phase_zero(self):
-        phase = 0
-        freqs = self.unit.get_frequencies(phase, self.nr_of_samples)
-        assert_equal(len(freqs), self.nr_of_samples)
-        map(lambda f: assert_equal(f, self.freq), freqs)
-
-    def test_with_different_phase(self):
-        phase = 50
-        freqs = self.unit.get_frequencies(phase, self.nr_of_samples)
-        assert_equal(len(freqs), self.nr_of_samples)
-        map(lambda f: assert_equal(f, self.freq), freqs)
+from synth.envelopes import ConstantAmplitudeEnvelope, SegmentAmplitudeEnvelope
 
 class Test_ConstantAmplitudeEnvelope(object):
 
