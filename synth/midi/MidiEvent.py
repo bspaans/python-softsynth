@@ -1,4 +1,5 @@
 import utils
+import sys
 
 class MidiEvent(object):
 
@@ -47,8 +48,7 @@ class MidiEvent(object):
         # I don't know what these events are supposed to do, but I keep finding
         # them. The parser ignores them.
         if event_type < 8:
-            raise FormatError('Unknown event type %d. Byte %d.' % (event_type,
-                self.bytes_read))
+            sys.stderr.write('WARN: Unknown event type %d.\n' % event_type)
 
         self.event_type = event_type
         self.channel = channel

@@ -1,11 +1,13 @@
 import math
 import numpy
+import sys
 
 class NoteEvent(object):
-    def __init__(self, start_time, stop_time, note):
+    def __init__(self, start_time, stop_time, note, velocity = 97):
         self.start_time = start_time 
         self.stop_time = stop_time 
         self.note = int(note)
+        self.velocity = velocity / 127.0
 
     def get_start_index_for_phase(self, time, phase):
         s = time - phase
@@ -94,7 +96,7 @@ class MidiTrackNoteEnvelope(object):
             offset = self.nr_of_loops * self.track_length
             if event.start_time + offset >= phase:
                 result.append(NoteEvent(event.start_time + offset, event.stop_time + offset, \
-                        event.param1))
+                        event.param1, event.param2))
             self.event_pointer += 1
             if self.loop and self.event_pointer >= self.nr_of_events:
                 self.event_pointer = self.event_pointer % self.nr_of_events

@@ -25,7 +25,7 @@ class MidiTrack(object):
             midi_event.start_time = cum_time
             self.events.append(midi_event)
         if chunk_size < 0:
-            print 'yikes.', self.bytes_read, chunk_size
+            print 'yikes.', chunk_size
         return self
 
     def parse_track_header(self, fp):

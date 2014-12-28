@@ -44,7 +44,8 @@ class BaseInstrument(SampleGenerator):
             length = stop_index - start_index
 
             for sample_generator in self.get_sample_generators_for_note(p.note):
-                result[start_index:stop_index] += sample_generator.get_samples(length, note_phase)
+                samples = sample_generator.get_samples(length, note_phase)
+                result[start_index:stop_index] += numpy.multiply(samples, p.velocity)
                 sources_arr[start_index:stop_index] += 1
         return (sources_arr, result)
 
@@ -74,7 +75,7 @@ class BaseInstrument(SampleGenerator):
             length = nr_of_samples - start_index
             for sample_generator in self.get_sample_generators_for_note(p.note):
                 samples = sample_generator.get_samples(length, note_phase, release = p.stop_time)
-                result[start_index:] += samples
+                result[start_index:] += numpy.multiply(samples, p.velocity)
                 sources_arr[start_index:] += 1
                 for i, s in enumerate(reversed(samples)):
                     if s != 0.0:
