@@ -1,5 +1,5 @@
 from synth.midi.MidiFileParser import MidiFileParser
-from synth.instruments import OvertoneInstrument
+from synth.instruments import OvertoneInstrument, PercussionInstrument
 from synth.interfaces import SampleGenerator
 from synth.note_envelopes import MidiTrackNoteEnvelope
 import numpy
@@ -16,9 +16,12 @@ class Synthesizer(SampleGenerator):
             t.events)) != 0, tracks)
         ticks_per_beat = header["time_division"]['ticks_per_beat']
         for t in tracks:
-            instr = OvertoneInstrument
-            instrument = instr(self.options, 
-                    MidiTrackNoteEnvelope(self.options, t, ticks_per_beat))
+            envelope = MidiTrackNoteEnvelope(self.options, t, ticks_per_beat)
+            channels = t.get_channels()
+            if 9 in channels:
+                instrument = PercussionInstrument(self.options, envelope)
+            else:
+                instrument = OvertoneInstrument(self.options, envelope, overtones = 3)
             self.instruments.append(instrument)
         return self
 

@@ -24,3 +24,14 @@ class OscillatorWithAmplitudeEnvelope(Oscillator):
         result = Oscillator.get_samples(self, nr_of_samples, phase, release)
         amplitudes = self.amp_env.get_amplitudes(phase, nr_of_samples, release)
         return numpy.multiply(result, amplitudes)
+
+class RandomOscillatorWithAmplitudeEnvelope(Oscillator):
+    def __init__(self, options, amplitude_envelope, freq = None):
+        super(RandomOscillatorWithAmplitudeEnvelope, self).__init__(options, freq)
+        self.amp_env = amplitude_envelope
+
+    def get_samples(self, nr_of_samples, phase, release = None):
+        result = numpy.random.random_sample(nr_of_samples) * 2 - 1
+        amplitudes = self.amp_env.get_amplitudes(phase, nr_of_samples, release)
+        return numpy.multiply(result, amplitudes)
+

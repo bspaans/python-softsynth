@@ -57,6 +57,13 @@ class MidiTrack(object):
                 del(playing[e.param1])
             else: # note on
                 playing[e.param1] = e
+                e.param1 = int(e.param1)
                 result.append(e)
         self.events = result
 
+    def get_channels(self):
+        result = set()
+        for e in self.events:
+            if e.channel is not None:
+                result.add(e.channel)
+        return result
