@@ -24,17 +24,17 @@ class BaseInstrument(SampleGenerator):
         return None
 
     def get_samples(self, nr_of_samples, phase, release = None):
-        sources = 0
+        sources_arr = numpy.zeros(nr_of_samples)
         result = numpy.zeros(nr_of_samples)
         notes = self.note_envelope.get_notes_for_range(self.options, phase, nr_of_samples)
         self.notes_playing = self.notes_playing.union(notes)
-        (sources_p, result) = self.render_playing_notes(result, nr_of_samples, phase)
-        (sources_s, result) = self.render_stopped_notes(result, nr_of_samples, phase)
-        sources += sources_p + sources_s
-        return result if sources <= 1 else result / float(sources)
+        (sources_p, result) = self.render_playing_notes(result, sources_arr, nr_of_samples, phase)
+        (sources_s, result) = self.render_stopped_notes(result, sources_arr, nr_of_samples, phase)
+        sources_arr += sources_p + sources_s
+        sources_arr = numpy.add(sources_arr, numpy.where(sources_arr == 0.0, 1.0, 0.0))
+        return result / sources_arr
 
-    def render_playing_notes(self, result, nr_of_samples, phase):
-        sources = 0
+    def render_playing_notes(self, result, sources_arr, nr_of_samples, phase):
         for p in self.notes_playing:
             if not p.does_this_note_play(phase, nr_of_samples):
                 continue
@@ -46,8 +46,8 @@ class BaseInstrument(SampleGenerator):
 
             for sample_generator in self.get_sample_generators_for_note(p.note):
                 result[start_index:stop_index] += sample_generator.get_samples(length, note_phase)
-                sources += 1
-        return (sources, result)
+                sources_arr[start_index:stop_index] += 1
+        return (sources_arr, result)
 
     def remove_stopped_playing_notes(self, nr_of_samples, phase):
         remove = set()
@@ -63,9 +63,8 @@ class BaseInstrument(SampleGenerator):
             sys.stderr.write("No generators for note %d\n" % note)
         return self.sample_generators[note]
 
-    def render_stopped_notes(self, result, nr_of_samples, phase):
+    def render_stopped_notes(self, result, sources_arr, nr_of_samples, phase):
         self.remove_stopped_playing_notes(nr_of_samples, phase)
-        sources = 0
         stopped = set()
         for p in self.notes_stopped:
             start_index = p.get_start_index_for_phase(p.stop_time, phase)
@@ -77,13 +76,13 @@ class BaseInstrument(SampleGenerator):
             for sample_generator in self.get_sample_generators_for_note(p.note):
                 samples = sample_generator.get_samples(length, note_phase, release = p.stop_time)
                 result[start_index:] += samples
-                sources += 1
+                sources_arr[start_index:] += 1
                 postfix_len = min(len(samples), 4)
                 if (samples[-postfix_len:] <= [0] * postfix_len).all():
                     stopped.add(p)
         for s in stopped:
             self.notes_stopped.remove(s)
-        return (sources, result)
+        return (sources_arr, result)
 
 class OvertoneInstrument(BaseInstrument):
 
