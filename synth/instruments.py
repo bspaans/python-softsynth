@@ -103,8 +103,8 @@ class OvertoneInstrument(BaseInstrument):
         for d in xrange(self.overtones, self.overtones + 1):
             amp_env = SegmentAmplitudeEnvelope()
             amp_env.release_time = self.release
-            amp_env.add_segment(1.0 / d, self.attack)
-            amp_env.add_segment(self.sustain / d, self.decay)
+            amp_env.add_segment(1.0 / (d + 1), self.attack)
+            amp_env.add_segment(self.sustain / (d + 1), self.decay)
             osc = OscillatorWithAmplitudeEnvelope(options, amp_env, freq * d)
             result.append(osc)
         return result
@@ -130,20 +130,34 @@ class PercussionInstrument(BaseInstrument):
             amp_env.add_segment(0.0, 5000)
             osc = OscillatorWithAmplitudeEnvelope(options, amp_env, freq = 100)
             return [osc]
-        if note in [40]: # snare
+        if note in [40, 38]: # snare
             amp_env = SegmentAmplitudeEnvelope()
             amp_env.release_time = 100
             amp_env.add_segment(1.0, 100)
             amp_env.add_segment(0.0, 8000)
             osc = RandomOscillatorWithAmplitudeEnvelope(options, amp_env, freq = 100)
             return [osc]
-        if note in [42]: # closed hihat
+        if note in [42, 46, 51]: # closed hihat
             amp_env = SegmentAmplitudeEnvelope()
             amp_env.add_segment(0.1, 100)
             amp_env.add_segment(0.0, 5000)
             osc = RandomOscillatorWithAmplitudeEnvelope(options, amp_env, freq = 100)
             return [osc]
-        if note in [49, 57]: # crash
+        if note in [51]: # ride
+            amp_env = SegmentAmplitudeEnvelope()
+            amp_env.add_segment(0.1, 100)
+            amp_env.add_segment(0.0, 5000)
+            osc = RandomOscillatorWithAmplitudeEnvelope(options, amp_env, freq = 100)
+            amp_env = SegmentAmplitudeEnvelope()
+            amp_env.add_segment(0.8, 100)
+            amp_env.add_segment(0.0, 1000)
+            osc2 = OscillatorWithAmplitudeEnvelope(options, amp_env, freq = 300)
+            amp_env = SegmentAmplitudeEnvelope()
+            amp_env.add_segment(0.8, 100)
+            amp_env.add_segment(0.0, 1000)
+            osc3 = OscillatorWithAmplitudeEnvelope(options, amp_env, freq = 600)
+            return [osc, osc2, osc3]
+        if note in [49, 55, 57]: # crash
             amp_env = SegmentAmplitudeEnvelope()
             amp_env.release_time = 100
             amp_env.add_segment(0.3, 1)

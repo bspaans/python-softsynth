@@ -95,10 +95,13 @@ class MidiTrackNoteEnvelope(object):
             event = self.events[self.event_pointer]
             offset = self.nr_of_loops * self.track_length
             if event.start_time + offset >= phase:
+                if event.stop_time is None:
+                    event.stop_time = nr_of_samples
                 result.append(NoteEvent(event.start_time + offset, event.stop_time + offset, \
                         event.param1, event.param2))
             self.event_pointer += 1
             if self.loop and self.event_pointer >= self.nr_of_events:
                 self.event_pointer = self.event_pointer % self.nr_of_events
                 self.nr_of_loops += 1
+                sys.stderr.write("Looping round, right round.\n")
         return result

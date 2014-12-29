@@ -1,8 +1,9 @@
 from synth.midi.MidiFileParser import MidiFileParser
-from synth.instruments import OvertoneInstrument, PercussionInstrument
+from synth.instruments import OvertoneInstrument, PercussionInstrument, SynthInstrument
 from synth.interfaces import SampleGenerator
 from synth.note_envelopes import MidiTrackNoteEnvelope
 import numpy
+import random
 
 class Synthesizer(SampleGenerator):
 
@@ -21,7 +22,13 @@ class Synthesizer(SampleGenerator):
             if 9 in channels:
                 instrument = PercussionInstrument(self.options, envelope)
             else:
-                instrument = OvertoneInstrument(self.options, envelope, overtones = 3)
+                att = 1000 # random.randrange(1000, 10000)
+                dec = 4000 # random.randrange(1000, 10000)
+                rel = 100 # random.randrange(1000, 10000)
+                sus = 0.1 # random.random()
+                instrument = OvertoneInstrument(self.options, envelope, overtones = 2, 
+                        attack = att, decay = dec, release = rel, sustain = sus)
+                #instrument = SynthInstrument(self.options, envelope)
             self.instruments.append(instrument)
         return self
 

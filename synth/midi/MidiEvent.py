@@ -26,6 +26,9 @@ class MidiEvent(object):
         self.start_time = None
         self.stop_time = None
 
+        self.last_event_of_track = False
+        self.system_common_message = None
+
     def parse_midi_event(self, fp):
         """Parse a MIDI event.
 
@@ -48,7 +51,8 @@ class MidiEvent(object):
         # I don't know what these events are supposed to do, but I keep finding
         # them. The parser ignores them.
         if event_type < 8:
-            sys.stderr.write('WARN: Unknown event type %d.\n' % event_type)
+            #sys.stderr.write('WARN: Unknown event type %d.\n' % event_type)
+            return chunk_size
 
         self.event_type = event_type
         self.channel = channel
@@ -62,13 +66,12 @@ class MidiEvent(object):
         return chunk_size
 
     def parse_meta_event(self, fp):
-        try:
-            meta_event = utils.bytes_to_int(fp.read(1))
-            (length, chunk_delta) = utils.parse_varbyte_as_int(fp)
-            data = fp.read(length)
-            chunk_size = 1 + chunk_delta + length
-        except:
-            raise IOError("Couldn't read meta event from file.")
+        meta_event = utils.bytes_to_int(fp.read(1))
+        (length, chunk_delta) = utils.parse_varbyte_as_int(fp)
+        if meta_event == 0x2f:
+            self.last_event_of_track = True
+        data = fp.read(length)
+        chunk_size = 1 + chunk_delta + length
         self.meta_event = meta_event
         self.data = data
         return chunk_size
@@ -90,6 +93,10 @@ class MidiEvent(object):
         self.param1 = utils.bytes_to_int(param1)
         self.param2 = utils.bytes_to_int(param2)
         return 2
+
+    def parse_system_common_message(self, event_type):
+        self.system_common_message = event_type
+
 
     def __repr__(self):
         time = "%d" % self.start_time
