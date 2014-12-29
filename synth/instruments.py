@@ -133,7 +133,7 @@ class PercussionInstrument(BaseInstrument):
         if note in [40, 38]: # snare
             amp_env = SegmentAmplitudeEnvelope()
             amp_env.release_time = 100
-            amp_env.add_segment(1.0, 100)
+            amp_env.add_segment(0.9, 100)
             amp_env.add_segment(0.0, 8000)
             osc = RandomOscillatorWithAmplitudeEnvelope(options, amp_env, freq = 100)
             return [osc]
@@ -161,8 +161,8 @@ class PercussionInstrument(BaseInstrument):
             amp_env = SegmentAmplitudeEnvelope()
             amp_env.release_time = 100
             amp_env.add_segment(0.3, 1)
-            amp_env.add_segment(1.0, 4000)
-            amp_env.add_segment(1.0, 6000)
+            amp_env.add_segment(0.8, 4000)
+            amp_env.add_segment(0.8, 6000)
             amp_env.add_segment(0.5, 10000)
             osc = RandomOscillatorWithAmplitudeEnvelope(options, amp_env, freq = 100)
             return [osc]

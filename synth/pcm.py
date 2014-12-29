@@ -1,4 +1,9 @@
-from synth.synthesizer import SampleGenerator
+from synth.interfaces import SampleGenerator
+import wave
+import struct
+import numpy
+import sys
+import math
 
 wavefile_cache = {}
 
@@ -39,4 +44,23 @@ class PCM(SampleGenerator):
             result = numpy.zeros(nr_of_samples)
             samples = self.length - phase
             result[:samples] = self.wavefile[phase:]
+        return result
+
+class PCMWithFrequency(PCM):
+
+    def __init__(self, options, file, freq = None, amplitude_envelope = None):
+        super(PCMWithFrequency, self).__init__(options, file)
+        self.freq = options.pitch_standard if freq is None else freq
+        self.freq_ratio = self.options.pitch_standard / self.freq
+
+    def get_samples(self, nr_of_samples, phase, release = None):
+        if self.freq == self.options.pitch_standard:
+            return PCM.get_samples(self, nr_of_samples, phase, release)
+
+        result = numpy.zeros(nr_of_samples)
+        for t in xrange(phase, phase + nr_of_samples):
+            index = t * self.freq_ratio
+            s1 = self.wavefile[math.floor(t)] * (index % 1)
+            s2 = self.wavefile[math.ceil(t)] * (1 - (index % 1))
+            result[t - phase] = (s1 + s2) / 2.0
         return result

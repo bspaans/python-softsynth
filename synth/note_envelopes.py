@@ -3,7 +3,7 @@ import numpy
 import sys
 
 class NoteEvent(object):
-    def __init__(self, start_time, stop_time, note, velocity = 97):
+    def __init__(self, start_time, stop_time, note, velocity = 127.0):
         self.start_time = start_time 
         self.stop_time = stop_time 
         self.note = int(note)

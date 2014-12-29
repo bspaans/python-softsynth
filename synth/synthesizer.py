@@ -2,6 +2,7 @@ from synth.midi.MidiFileParser import MidiFileParser
 from synth.instruments import OvertoneInstrument, PercussionInstrument, SynthInstrument
 from synth.interfaces import SampleGenerator
 from synth.note_envelopes import MidiTrackNoteEnvelope
+from synth.pcm import PCMWithFrequency
 import numpy
 import random
 
@@ -30,6 +31,7 @@ class Synthesizer(SampleGenerator):
                         attack = att, decay = dec, release = rel, sustain = sus)
                 #instrument = SynthInstrument(self.options, envelope)
             self.instruments.append(instrument)
+        self.instruments.append(PCMWithFrequency(self.options, "demo/rap_102_c1.wav", 120.0))
         return self
 
     def add_instrument(self, instrument):

@@ -73,7 +73,6 @@ class Test_BaseInstrument(object):
         self.unit = BaseInstrument(options, notes)
         samples = self.unit.get_samples(10, 0)
         assert_equal(len(samples), 10)
-        print samples
         assert_equal(samples[0], 69)
         assert_equal(samples[1], 70)
         assert_equal(samples[2], 71)
