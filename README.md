@@ -25,13 +25,14 @@ Run
 ===
 
 ```
-python synth/synth.py test/midi/test1.mid
+python main.py test_files/midi/bwv772.mid | aplay -f S16_LE -r 44100 -c 1
 ```
 
-or for the new, more performant, approach:
+Test 
+====
+
+In the root directory of the project run:
 
 ```
-python synth/oscillator.py | aplay -f S16_LE -r 44100 -c 1
+nosetests
 ```
-
-This one doesn't have midi support though. But it's so fast.
