@@ -51,7 +51,7 @@ class PCMWithFrequency(PCM):
     def __init__(self, options, file, freq = None, amplitude_envelope = None):
         super(PCMWithFrequency, self).__init__(options, file)
         self.freq = options.pitch_standard if freq is None else freq
-        self.freq_ratio = self.options.pitch_standard / self.freq
+        self.freq_ratio = self.freq / self.options.pitch_standard
 
     def get_samples(self, nr_of_samples, phase, release = None):
         if self.freq == self.options.pitch_standard:
@@ -60,7 +60,11 @@ class PCMWithFrequency(PCM):
         result = numpy.zeros(nr_of_samples)
         for t in xrange(phase, phase + nr_of_samples):
             index = t * self.freq_ratio
-            s1 = self.wavefile[math.floor(t)] * (index % 1)
-            s2 = self.wavefile[math.ceil(t)] * (1 - (index % 1))
-            result[t - phase] = (s1 + s2) / 2.0
+            mod = index % 1
+            if mod == 0:
+                result[t-phase] = self.wavefile[math.floor(index)]
+            else:
+                s1 = self.wavefile[math.floor(index)] * (mod)
+                s2 = self.wavefile[math.floor(index + 1)] * (1 - mod)
+                result[t - phase] = (s1 + s2)
         return result
