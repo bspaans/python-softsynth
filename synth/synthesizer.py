@@ -1,5 +1,7 @@
 from synth.midi.MidiFileParser import MidiFileParser
-from synth.instruments import OvertoneInstrument, PercussionInstrument, SynthInstrument
+from synth.instruments.OvertoneInstrument import OvertoneInstrument
+from synth.instruments.PercussionInstrument import PercussionInstrument
+from synth.instruments.SynthInstrument import SynthInstrument
 from synth.interfaces import SampleGenerator
 from synth.note_envelopes import MidiTrackNoteEnvelope
 from synth.pcm import PCMWithFrequency

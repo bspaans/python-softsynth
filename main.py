@@ -8,7 +8,7 @@ import pstats
 from synth.synthesizer import Synthesizer
 from synth.wave_writer import WaveWriter
 from synth.options import Options
-from synth.instruments import OvertoneInstrument
+from synth.instruments.OvertoneInstrument import OvertoneInstrument
 from synth.note_envelopes import ArpeggioNoteEnvelope,\
         ConstantNoteEnvelope, MidiTrackNoteEnvelope
 import time

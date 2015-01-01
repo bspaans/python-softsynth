@@ -6,9 +6,9 @@ class Delay(SampleGenerator):
 
     def __init__(self, options, delay_nr_of_samples = 4):
         super(Delay, self).__init__(options)
-        self.source = None
         self.delay_nr_of_samples = delay_nr_of_samples
         self.delayed = numpy.array([])
+        self.source = None
 
     def set_source(self, source):
         self.source = source
@@ -40,3 +40,18 @@ class Delay(SampleGenerator):
                 samples[self.delay_nr_of_samples:] /= 2.0
             self.delayed = new_delayed
         return samples
+
+class DistortionFilter(SampleGenerator):
+    def __init__(self, options, level = 0.8):
+        super(DistortionFilter, self).__init__(options)
+        self.level = level
+        self.source = None
+
+    def set_source(self, source):
+        self.source = source
+
+    def get_samples(self, nr_of_samples, phase, release = None):
+        samples = self.source.get_samples(nr_of_samples, phase, release)
+        s1 = numpy.where(samples > self.level, self.level, samples)
+        s2 = numpy.where(samples < -self.level, -self.level, samples)
+        return s2
