@@ -34,7 +34,7 @@ class Delay(SampleGenerator):
             delayed = samples[:-self.delay_nr_of_samples]
             samples[self.delay_nr_of_samples:] = samples[self.delay_nr_of_samples:] + delayed
             if phase > 0:
-                samples[:self.delay_nr_of_samples] = samples[:self.delay_nr_of_samples] + self.delayed
+                samples[:self.delay_nr_of_samples] = samples[:self.delay_nr_of_samples] + self.delayed[:self.delay_nr_of_samples]
                 samples /= 2.0
             else:
                 samples[self.delay_nr_of_samples:] /= 2.0

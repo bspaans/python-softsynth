@@ -109,7 +109,7 @@ class OvertoneInstrument(BaseInstrument):
             osc = OscillatorWithAmplitudeEnvelope(options, amp_env, freq * d)
 	    delay = Delay(options, 4)
 	    delay.set_source(osc)
-            result.append(delay)
+            result.append(osc)
         return result
 
 class SynthInstrument(BaseInstrument):

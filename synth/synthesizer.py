@@ -17,20 +17,27 @@ class Synthesizer(SampleGenerator):
         tracks = filter(lambda t: len(filter(lambda x: x.event_type in [8,9], 
             t.events)) != 0, tracks)
         ticks_per_beat = header["time_division"]['ticks_per_beat']
+        song_length = 0
         for t in tracks:
             envelope = MidiTrackNoteEnvelope(self.options, t, ticks_per_beat)
             channels = t.get_channels()
             if 9 in channels:
                 instrument = PercussionInstrument(self.options, envelope)
             else:
-                att = 2000 # random.randrange(1000, 10000)
-                dec = 9000 # random.randrange(1000, 10000)
+                att = 1000 # random.randrange(1000, 10000)
+                dec = 2000 # random.randrange(1000, 10000)
                 rel = 100 # random.randrange(1000, 10000)
-                sus = 0.8 # random.random()
+                sus = 0.5 # random.random()
                 instrument = OvertoneInstrument(self.options, envelope, overtones = 2, 
                         attack = att, decay = dec, release = rel, sustain = sus)
                 #instrument = SynthInstrument(self.options, envelope)
             self.instruments.append(instrument)
+            if envelope.track_length > song_length:
+                song_length = envelope.track_length
+
+        for i in self.instruments:
+            i.note_envelope.track_length = song_length
+
         #self.instruments.append(PCMWithFrequency(self.options, "demo/rap_102_c1.wav", 440.0))
         return self
 
