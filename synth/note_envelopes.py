@@ -74,8 +74,7 @@ class MidiTrackNoteEnvelope(object):
 
     def prepare_track(self, track):
         result = []
-        track.replace_note_off_with_stop_time_on_note_on()
-        for event in track.events:
+        for event in track:
             if event.event_type in [8, 9]:
                 event.start_time = int(event.start_time * self.samples_per_tick)
                 if event.stop_time is not None:
@@ -84,7 +83,10 @@ class MidiTrackNoteEnvelope(object):
         self.events = result
         self.event_pointer = 0
         self.nr_of_events = len(self.events)
-        self.track_length = max(map(lambda s: 0.0 if s.stop_time is None else s.stop_time, self.events))
+        if self.nr_of_events == 0:
+            self.track_length = 0
+        else:
+            self.track_length = max(map(lambda s: 0.0 if s.stop_time is None else s.stop_time, self.events))
         self.nr_of_loops = 0
 
     def get_notes_for_range(self, options, phase, nr_of_samples):

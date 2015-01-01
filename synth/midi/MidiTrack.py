@@ -26,6 +26,7 @@ class MidiTrack(object):
             self.events.append(midi_event)
         if chunk_size < 0:
             print 'yikes.', chunk_size
+        self.set_stop_times()
         return self
 
     def parse_track_header(self, fp):
@@ -42,10 +43,19 @@ class MidiTrack(object):
         result += ",\n ".join(map(str, self.events))
         return result + "]"
 
+    def set_stop_times(self):
+        for e in self.events:
+            if e.event_type not in [8, 9]:
+                e.stop_time = e.start_time
+        self.replace_note_off_with_stop_time_on_note_on()
+
     def replace_note_off_with_stop_time_on_note_on(self):
         result = []
         playing = {}
+        last_time = 0
         for e in self.events:
+            if e.start_time > last_time:
+                last_time = e.start_time
             if e.event_type not in [8, 9]:
                 result.append(e)
                 continue
@@ -59,7 +69,10 @@ class MidiTrack(object):
                 playing[e.param1] = e
                 e.param1 = int(e.param1)
                 result.append(e)
+        for e in playing: 
+            e.stop_time = last_time
         self.events = result
+
 
     def get_channels(self):
         result = set()

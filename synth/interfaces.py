@@ -15,4 +15,3 @@ class SampleGenerator(object):
         result = self.get_samples(nr_of_samples, phase, release)
         return numpy.multiply(result, self.options.max_value).astype(int)
 
-

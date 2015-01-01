@@ -20,5 +20,14 @@ class MidiFileParser(object):
         for t in range(header['number_of_tracks']):
             result.append(MidiTrack().parse_track(f))
         f.close()
+        result = self.split_tracks_into_channels(result)
         return (header, result)
 
+    def split_tracks_into_channels(self, tracks):
+        channels = {}
+        for t in tracks:
+            for e in t.events:
+                channel = channels.get(e.channel, [])
+                channel.append(e)
+                channels[e.channel] = channel 
+        return channels

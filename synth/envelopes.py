@@ -9,6 +9,15 @@ class ConstantFrequencyEnvelope(object):
         phases = numpy.arange(phase, phase + nr_of_samples)
         return result, phases
 
+class SemiToneBendFrequencyEnvelope(object):
+    def __init__(self, freq):
+        self.base_freq = float(freq)
+        self.semitones = 0
+    def get_frequencies(self, nr_of_samples, phase, release = None):
+        result = numpy.full([nr_of_samples], self.base_freq)
+        phases = numpy.arange(phase, phase + nr_of_samples)
+        return result, phases
+
 class ConstantAmplitudeEnvelope(object):
     def __init__(self, max_amplitude):
         self.max_amplitude = max_amplitude

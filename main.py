@@ -85,7 +85,7 @@ def stream_to_pyaudio(options, synth):
     pyaudio_synth = synth
     output = pyaudio.PyAudio()
     stream = output.open(format=pyaudio.paInt16, channels=1, 
-            rate=44100, output=True, stream_callback=callback)
+            rate=options.sample_rate, output=True, stream_callback=callback)
     stream.start_stream()
     while stream.is_active():
         time.sleep(0.1)

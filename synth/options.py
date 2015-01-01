@@ -22,7 +22,7 @@ class Options(object):
         self.bpm = 150
         self.buffer_size = 10000
 
-	self.output_midi_events = True
+	self.output_midi_events = False
        
     def get_frequency_table(self):
         return self.frequency_table
