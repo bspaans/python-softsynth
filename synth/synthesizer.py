@@ -18,6 +18,11 @@ class Synthesizer(SampleGenerator):
         (header, tracks) = MidiFileParser().parse_midi_file(file)
         tracks = filter(lambda t: len(filter(lambda x: x.event_type in [8,9], 
             t.events)) != 0, tracks)
+        if self.options.output_midi_events:
+            for t in tracks:
+                print "NEW TRACK"
+                for e in t.events:
+                    print e
         ticks_per_beat = header["time_division"]['ticks_per_beat']
         song_length = 0
         for t in tracks:
@@ -39,7 +44,7 @@ class Synthesizer(SampleGenerator):
 
         for i in self.instruments:
             i.note_envelope.track_length = song_length
-
+	
         #self.instruments.append(PCMWithFrequency(self.options, "demo/rap_102_c1.wav", 440.0))
         return self
 

@@ -1,6 +1,14 @@
 import numpy
 import sys
 
+class ConstantFrequencyEnvelope(object):
+    def __init__(self, freq):
+        self.freq = float(freq)
+    def get_frequencies(self, nr_of_samples, phase, release = None):
+        result = numpy.full([nr_of_samples], self.freq)
+        phases = numpy.arange(phase, phase + nr_of_samples)
+        return result, phases
+
 class ConstantAmplitudeEnvelope(object):
     def __init__(self, max_amplitude):
         self.max_amplitude = max_amplitude
