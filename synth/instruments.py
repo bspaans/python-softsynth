@@ -2,6 +2,7 @@ from synth.interfaces import SampleGenerator
 from synth.envelopes import SegmentAmplitudeEnvelope
 from synth.oscillator import Oscillator, OscillatorWithAmplitudeEnvelope, \
         RandomOscillatorWithAmplitudeEnvelope
+from synth.new_filters import Delay
 import numpy
 import sys
 
@@ -106,7 +107,9 @@ class OvertoneInstrument(BaseInstrument):
             amp_env.add_segment(1.0 / (d + 1), self.attack)
             amp_env.add_segment(self.sustain / (d + 1), self.decay)
             osc = OscillatorWithAmplitudeEnvelope(options, amp_env, freq * d)
-            result.append(osc)
+	    delay = Delay(options, 4)
+	    delay.set_source(osc)
+            result.append(delay)
         return result
 
 class SynthInstrument(BaseInstrument):

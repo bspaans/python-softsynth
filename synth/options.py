@@ -19,7 +19,7 @@ class Options(object):
         self.two_pi = 2 * math.pi
         self.two_pi_divided_by_sample_rate = self.two_pi / self.sample_rate
 
-        self.bpm = 140
+        self.bpm = 900
         self.buffer_size = 10000
        
     def get_frequency_table(self):
