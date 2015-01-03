@@ -19,17 +19,17 @@ class BaseInstrument(SampleGenerator):
     def init_note(self, options, note, freq):
         return None
 
-    def get_samples(self, nr_of_samples, phase, release = None):
+    def get_samples(self, nr_of_samples, phase, release = None, pitch_bend = None):
         sources_arr = numpy.zeros(nr_of_samples)
         result = numpy.zeros(nr_of_samples)
         notes = self.note_envelope.get_notes_for_range(self.options, phase, nr_of_samples)
         self.notes_playing = self.notes_playing.union(notes)
-        (sources_arr, result) = self.render_playing_notes(result, sources_arr, nr_of_samples, phase)
+        (sources_arr, result) = self.render_playing_notes(result, sources_arr, nr_of_samples, phase, pitch_bend)
         (sources_arr, result) = self.render_stopped_notes(result, sources_arr, nr_of_samples, phase)
         sources_arr = numpy.add(sources_arr, numpy.where(sources_arr == 0.0, 1.0, 0.0))
         return result / sources_arr
 
-    def render_playing_notes(self, result, sources_arr, nr_of_samples, phase):
+    def render_playing_notes(self, result, sources_arr, nr_of_samples, phase, pitch_bend):
         for p in self.notes_playing:
             if not p.does_this_note_play(phase, nr_of_samples):
                 continue
@@ -40,7 +40,7 @@ class BaseInstrument(SampleGenerator):
             length = stop_index - start_index
 
             for sample_generator in self.get_sample_generators_for_note(p.note):
-                samples = sample_generator.get_samples(length, note_phase)
+                samples = sample_generator.get_samples(length, note_phase, None, pitch_bend[start_index:stop_index])
                 result[start_index:stop_index] += numpy.multiply(samples, p.velocity)
                 sources_arr[start_index:stop_index] += 1
         return (sources_arr, result)

@@ -48,6 +48,7 @@ class MidiTrack(object):
             if e.event_type not in [8, 9]:
                 e.stop_time = e.start_time
         self.replace_note_off_with_stop_time_on_note_on()
+        self.set_pitch_bend_stop_time_to_next_pitch_bend_start_time()
 
     def replace_note_off_with_stop_time_on_note_on(self):
         result = []
@@ -69,14 +70,14 @@ class MidiTrack(object):
                 playing[e.param1] = e
                 e.param1 = int(e.param1)
                 result.append(e)
-        for e in playing: 
+        for e in playing.itervalues(): 
             e.stop_time = last_time
         self.events = result
 
-
-    def get_channels(self):
-        result = set()
+    def set_pitch_bend_stop_time_to_next_pitch_bend_start_time(self):
+        pitch_bend = None
         for e in self.events:
-            if e.channel is not None:
-                result.add(e.channel)
-        return result
+            if e.event_type == 14:
+                if pitch_bend is not None:
+                    pitch_bend.stop_time = e.start_time
+                pitch_bend = e

@@ -1,7 +1,8 @@
 from synth.envelopes import SegmentAmplitudeEnvelope
-from synth.oscillator import OscillatorWithAmplitudeEnvelope
+from synth.oscillator import OscillatorWithFrequencyAndAmplitudeControl
 from synth.new_filters import Delay, DistortionFilter
 from synth.instruments.BaseInstrument import BaseInstrument
+from synth.envelopes import ConstantFrequencyEnvelope
 
 
 class OvertoneInstrument(BaseInstrument):
@@ -21,10 +22,11 @@ class OvertoneInstrument(BaseInstrument):
             amp_env.release_time = self.release
             amp_env.add_segment(1.0 / (d + 1), self.attack)
             amp_env.add_segment(self.sustain / (d + 1), self.decay)
-            osc = OscillatorWithAmplitudeEnvelope(options, amp_env, freq * d)
+            freq_env = ConstantFrequencyEnvelope(d * freq)
+            osc = OscillatorWithFrequencyAndAmplitudeControl(options, freq_env, amp_env)
 	    delay = Delay(options, 4)
 	    delay.set_source(osc)
-	    dist = DistortionFilter(options, 0.1)
+	    dist = DistortionFilter(options, 0.2)
 	    dist.set_source(osc)
             result.append(dist)
         return result

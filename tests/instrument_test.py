@@ -1,5 +1,5 @@
 from nose.tools import *
-from synth.instruments import BaseInstrument 
+from synth.instruments.BaseInstrument import BaseInstrument 
 from synth.options import Options
 from synth.note_envelopes import NoteEvent
 import numpy
@@ -16,6 +16,8 @@ class Test_BaseInstrument(object):
     class DummySampleGenerator(object):
         def __init__(self, note):
             self.note = note
+        def set_pitch_bend(self, pb):
+            pass
         def get_samples(self, nr_of_samples, phase, release = None):
             if release is not None:
                 return numpy.zeros(nr_of_samples)

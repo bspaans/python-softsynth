@@ -65,21 +65,11 @@ class MidiTrackNoteEnvelope(object):
     def __init__(self, options, track, ticks_per_beat):
         self.options = options
         self.ticks_per_beat = float(ticks_per_beat)
-        self.bpm = options.bpm
-        self.seconds_per_beat = 60.0 / self.bpm
-        self.samples_per_beat = self.options.sample_rate * self.seconds_per_beat
-        self.samples_per_tick = self.samples_per_beat / self.ticks_per_beat
         self.loop = True
         self.prepare_track(track)
 
     def prepare_track(self, track):
-        result = []
-        for event in track:
-            if event.event_type in [8, 9]:
-                event.start_time = int(event.start_time * self.samples_per_tick)
-                if event.stop_time is not None:
-                    event.stop_time = int(event.stop_time * self.samples_per_tick)
-                result.append(event)
+        result = [ e for e in track if e.event_type == 9 ]
         self.events = result
         self.event_pointer = 0
         self.nr_of_events = len(self.events)
