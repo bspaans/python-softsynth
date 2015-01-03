@@ -65,7 +65,7 @@ class MidiTrackNoteEnvelope(object):
     def __init__(self, options, track, ticks_per_beat):
         self.options = options
         self.ticks_per_beat = float(ticks_per_beat)
-        self.loop = True
+        self.loop = options.loop
         self.prepare_track(track)
 
     def prepare_track(self, track):

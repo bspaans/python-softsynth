@@ -15,7 +15,8 @@ class PercussionInstrument(BaseInstrument):
             amp_env.add_segment(1.0, 100)
             amp_env.add_segment(0.0, 2500)
             osc = OscillatorWithAmplitudeEnvelope(options, amp_env, freq = 100)
-            return [osc]
+            osc2 = OscillatorWithAmplitudeEnvelope(options, amp_env, freq = 60)
+            return [osc, osc2]
         if note in [40, 38]: # snare
             amp_env = SegmentAmplitudeEnvelope()
             amp_env.release_time = 100
@@ -58,5 +59,6 @@ class PercussionInstrument(BaseInstrument):
 
     def get_sample_generators_for_note(self, note):
         if self.sample_generators[note] == []:
-            sys.stderr.write("No generators for note %d\n" % note)
+            #sys.stderr.write("No generators for note %d\n" % note)
+            pass
         return self.sample_generators[note]

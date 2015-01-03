@@ -51,13 +51,16 @@ class Synthesizer(SampleGenerator):
 
         for channel, c in self.channels.iteritems():
             c.set_song_length(song_length)
-	
+
+        self.song_length = song_length
         return self
 
     def add_instrument(self, instrument):
         self.instruments.append(instrument)
 
     def get_samples(self, nr_of_samples, phase, release = None, pitch_bend = None):
+        if not self.options.loop and phase > self.song_length:
+            return None
         result = numpy.zeros(nr_of_samples)
         sources = numpy.zeros(nr_of_samples)
         for nr, channel in self.channels.iteritems():

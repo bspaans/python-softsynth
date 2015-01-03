@@ -13,5 +13,7 @@ class SampleGenerator(object):
 
     def get_samples_in_byte_rate(self, nr_of_samples, phase, release = None, pitch_bend = None):
         result = self.get_samples(nr_of_samples, phase, release, pitch_bend)
+        if result is None:
+            return None
         return numpy.multiply(result, self.options.max_value).astype(int)
 

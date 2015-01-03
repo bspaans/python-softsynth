@@ -74,6 +74,8 @@ pyaudio_time = 0
 def callback(data_in, frame_count, time_info, status):
     global pyaudio_synth, pyaudio_options, pyaudio_time
     data = pyaudio_synth.get_samples_in_byte_rate(frame_count, pyaudio_time)
+    if data is None:
+    	return '', pyaudio.paComplete
     fmt = str(frame_count) + pyaudio_options.struct_pack_format
     data = struct.pack(fmt, *map(int, data))
     pyaudio_time += frame_count
