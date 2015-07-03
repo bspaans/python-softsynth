@@ -1,3 +1,7 @@
 *.pyc
 *.swp
+*.wav
 output.wav
+build/
+dist/
+softsynth.egg-info/
