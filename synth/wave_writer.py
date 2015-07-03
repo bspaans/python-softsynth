@@ -4,10 +4,10 @@ import sys
 
 class WaveWriter(object):
 
-    def __init__(self, options, filename, also_output_to_stdout = False):
+    def __init__(self, options):
         self.options = options
-        self.filename = filename
-        self.also_output_to_stdout = also_output_to_stdout
+        self.filename = options.get_output_file()
+        self.also_output_to_stdout = options.write_wave_to_stdout
         self.open()
 
     def open(self):
@@ -33,3 +33,15 @@ class WaveWriter(object):
         self.wave.close()
         print "Written", self.filename
 
+    def output(self, synth):
+        t= 0
+        try:
+            w = True
+            while w:
+                samples = synth.get_samples_in_byte_rate(self.options.buffer_size, t)
+                w = self.write_samples(samples)
+                t += self.options.buffer_size
+        except KeyboardInterrupt:
+            sys.stderr.write("Writted %d samples\n" % t)
+        finally:
+            self.close() 

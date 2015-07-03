@@ -10,6 +10,7 @@ On linux:
 
 ```
 sudo pip install -r requirements.txt
+sudo python setup.py install
 ```
 
 On Mac:
@@ -19,6 +20,7 @@ On Mac:
 brew install portaudio
 sudo easy_install pyaudio
 sudo pip install -r requirements.txt 
+sudo python setup.py install
 ```
 
 Run

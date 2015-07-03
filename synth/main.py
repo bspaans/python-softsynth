@@ -1,17 +1,12 @@
 import sys
-try:
-    import pyaudio
-except:
-    sys.stderr.write("portaudio is not available. Falling back to writing output.wav\n")
-import cProfile
-import pstats
+import argparse
+
 from synth.synthesizer import Synthesizer
 from synth.wave_writer import WaveWriter
 from synth.options import Options
+from synth import stream
 from synth.instruments.OvertoneInstrument import OvertoneInstrument
 from synth.note_envelopes import MidiTrackNoteEnvelope
-import time
-import struct
 
 def profile_call():
     opts = Options()
@@ -19,92 +14,46 @@ def profile_call():
     input = instr
     input.get_samples_in_byte_rate(44100)
 
-def profile():
-    if "--profile" in sys.argv:
+def profile(opts):
+    if opts.profile_application:
+        import cProfile
+        import pstats
         cProfile.run('profile_call()', 'restats')
         p = pstats.Stats('restats')
         p.strip_dirs().sort_stats('time').print_stats()
         sys.exit(0)
 
-def plot(input):
-    if "--plot" in sys.argv:
-        opts = Options()
-        nr_of_samples = int(sys.argv[sys.argv.index("--plot") + 1])
-        if len(sys.argv) > sys.argv.index("--plot") + 2 and sys.argv[sys.argv.index("--plot") + 2].isdigit():
 
-
-            start_at = int(sys.argv[sys.argv.index("--plot") + 2])
-            samples = input.get_samples_in_byte_rate(nr_of_samples + start_at, 0)[start_at:]
-        else:
-            samples = input.get_samples_in_byte_rate(nr_of_samples)
-        import Gnuplot
-        g = Gnuplot.Gnuplot()
-        g.title("Yo")
-        g("set data style linespoints")
-        g.plot(zip(xrange(nr_of_samples), samples))
-        raw_input('Please press return to continue...\n')
-        sys.exit(0)
-
-def process_midi_files():
-    for f in sys.argv:
-        if ".mid" in f:
-            return Synthesizer(Options()).load_from_midi(f)
-
-def output_to_wave_writer(options, synth):
-    wave = WaveWriter(options, "output.wav", also_output_to_stdout = "--stdout" in sys.argv)
-    t= 0
-    try:
-    	w = True
-        while w:
-            w = wave.write_samples(synth.get_samples_in_byte_rate(options.buffer_size, t))
-            t += options.buffer_size
-    except KeyboardInterrupt:
-        sys.stderr.write("Writted %d samples\n" % t)
-    finally:
-        wave.close() 
-
-# It's global time
-# Haven't found a way to pass this in to the callback. 
-#
-pyaudio_synth = None
-pyaudio_options = None
-pyaudio_time = 0
-
-def callback(data_in, frame_count, time_info, status):
-    global pyaudio_synth, pyaudio_options, pyaudio_time
-    data = pyaudio_synth.get_samples_in_byte_rate(frame_count, pyaudio_time)
-    if data is None:
-    	return '', pyaudio.paComplete
-    fmt = str(frame_count) + pyaudio_options.struct_pack_format
-    data = struct.pack(fmt, *map(int, data))
-    pyaudio_time += frame_count
-    return ''.join(data), pyaudio.paContinue
-
-def stream_to_pyaudio(options, synth):
-    global pyaudio_synth, pyaudio_options
-    pyaudio_options = options
-    pyaudio_synth = synth
-    output = pyaudio.PyAudio()
-    stream = output.open(format=pyaudio.paInt16, channels=1, 
-            rate=options.sample_rate, output=True, stream_callback=callback)
-    stream.start_stream()
-    while stream.is_active():
-        time.sleep(0.1)
-    return
-    stream.stop_stream()
-    stream.close()
+def get_args():
+    parser = argparse.ArgumentParser(prog='synth',
+            description='Programmable synth')
+    parser.add_argument('input', metavar='INPUT', nargs=1, 
+            help='the input file path')
+    parser.add_argument('output', metavar='OUTPUT', nargs='?', 
+            help='the optional output file path. Default is INPUT.wav')
+    parser.add_argument('-w', '--wave', action='store_true',
+            help='Output wave file.')
+    parser.add_argument('--profile', action='store_true',
+            help='Profile the application to find hot spots.')
+    parser.add_argument('--stdout', action='store_true',
+            help='Also write PCM data to stdout. Only valid in conjunction with the --wave flag.')
+    args = parser.parse_args()
+    opts = Options(args.input[0], args.output)
+    opts.write_wave = args.wave
+    opts.write_wave_to_stdout = args.stdout
+    opts.profile_application = args.profile
+    return opts
 
 def main():
-    synth = process_midi_files()
-    profile()
-    plot(synth)
-    opts = Options()
+    opts = get_args()
+    synth = Synthesizer(opts).load_from_midi(opts.input)
+    profile(opts)
 
     wave = None
-    if 'pyaudio' in globals() and "--wave" not in sys.argv:
-        stream_to_pyaudio(opts, synth)
+    if stream.PYAUDIO and not opts.write_wave:
+        stream.stream_to_pyaudio(opts, synth)
     else: 
-        output_to_wave_writer(opts, synth)
+        WaveWriter(opts).output(synth)
 
 if __name__ == '__main__':
     main()

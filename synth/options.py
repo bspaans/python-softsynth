@@ -1,7 +1,10 @@
 import math
+import os.path as path
 
 class Options(object):
-    def __init__(self):
+    def __init__(self, input = None, output = None):
+        self.input = input
+        self.output = output
 
         # Sample and byte rate
         self.sample_rate     = 44100
@@ -22,12 +25,22 @@ class Options(object):
         self.bpm = 140
         self.buffer_size = 10000
 
-	self.loop = True
+        self.loop = True
+        self.output_midi_events = False # debugging
 
-	self.output_midi_events = True
+        self.write_wave = False
+        self.write_wave_to_stdout = False
+        self.profile_application = False
        
     def get_frequency_table(self):
         return self.frequency_table
+
+    def get_output_file(self):
+        if self.output is None:
+            input_base = path.splitext(self.input)[0]
+            return input_base + ".wav"
+        return self.output
+
 
 class FrequencyTable(object):
     def __init__(self, options):
