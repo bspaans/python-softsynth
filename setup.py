@@ -8,7 +8,7 @@ except ImportError:
         + " install setuptools).")
 
 setup(name= "softsynth",
-    version = "0.3.2",
+    version = "0.3.3",
     description = "Proof of concept software synthesizer",
     long_description = """you too""",
     author = "Bart Spaans",
@@ -16,7 +16,6 @@ setup(name= "softsynth",
     url = "https://github.com/bspaans/python-softsynth",
     packages = ['synth', 'synth.midi', 'synth.instruments'],
     license="GPLv3",
-    install_requires = ['mingus==0.5.0.0'],
     classifiers = [
         'Intended Audience :: Developers',
         'Intended Audience :: Other Audience',

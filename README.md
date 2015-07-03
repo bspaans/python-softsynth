@@ -8,8 +8,15 @@ On linux:
 
 - install pyaudio from http://people.csail.mit.edu/hubert/pyaudio/
 
+and then: 
+
 ```
-sudo pip install -r requirements.txt
+pip install softsynth
+```
+
+or after cloning the git repo:
+
+```
 sudo python setup.py install
 ```
 
@@ -19,15 +26,33 @@ On Mac:
 ```
 brew install portaudio
 sudo easy_install pyaudio
-sudo pip install -r requirements.txt 
+```
+
+and then: 
+
+```
+pip install softsynth
+```
+
+or after cloning the git repo:
+
+```
 sudo python setup.py install
 ```
 
 Run
 ===
 
+Stream midi:
+
 ```
-python main.py test_files/midi/bwv772.mid | aplay -f S16_LE -r 44100 -c 1
+blakey test_files/midi/bwv772.mid | aplay -f S16_LE -r 44100 -c 1
+```
+
+Write wav file:
+
+```
+blakey -w test_files/midi/bwv772.mid
 ```
 
 Test 
