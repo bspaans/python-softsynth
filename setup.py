@@ -8,7 +8,7 @@ except ImportError:
         + " install setuptools).")
 
 setup(name= "softsynth",
-    version = "0.1.0",
+    version = "0.3.0",
     description = "Proof of concept software synthesizer",
     long_description = """you too""",
     author = "Bart Spaans",
