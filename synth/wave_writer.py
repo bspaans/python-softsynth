@@ -18,23 +18,16 @@ class WaveWriter(object):
         self.wave = w
         self.data = []
 
-    def write(self, elem):
-        sample = struct.pack(self.options.struct_pack_format, int(elem))
-        self.data.append(sample)
-        if len(self.data) > 1024:
-            if self.also_output_to_stdout:
-                sys.stdout.write(''.join(self.data))
-                sys.stdout.flush()
-            self.wave.writeframes(''.join(self.data))
-            self.data = []
-
     def write_samples(self, elems):
+        if elems is None:
+            return False
         fmt = str(len(elems)) + self.options.struct_pack_format
         sample = struct.pack(fmt, *map(int, elems))
         if self.also_output_to_stdout:
             sys.stdout.write(sample)
             sys.stdout.flush()
         self.wave.writeframes(sample)
+        return True
 
     def close(self):
         self.wave.close()

@@ -1,5 +1,6 @@
 import numpy
 import sys
+import random
 
 class ConstantFrequencyEnvelope(object):
     def __init__(self, freq):
@@ -7,7 +8,7 @@ class ConstantFrequencyEnvelope(object):
     def get_frequencies(self, nr_of_samples, phase, release = None, pitch_bend = None):
         result = numpy.full([nr_of_samples], self.freq)
         if pitch_bend is not None:
-            result *= (2 ** ((pitch_bend * 16) / 1200.0))
+            result *= (2 ** ((pitch_bend * 19) / 1200.0))
         phases = numpy.arange(phase, phase + nr_of_samples)
         return result, phases
 

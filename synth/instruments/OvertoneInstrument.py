@@ -26,8 +26,8 @@ class OvertoneInstrument(BaseInstrument):
             osc = OscillatorWithFrequencyAndAmplitudeControl(options, freq_env, amp_env)
 	    delay = Delay(options, 4)
 	    delay.set_source(osc)
-	    dist = DistortionFilter(options, 0.2)
+	    dist = DistortionFilter(options, 0.01)
 	    dist.set_source(osc)
-            result.append(dist)
+        result.append(dist)
         return result
 

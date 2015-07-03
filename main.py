@@ -9,8 +9,7 @@ from synth.synthesizer import Synthesizer
 from synth.wave_writer import WaveWriter
 from synth.options import Options
 from synth.instruments.OvertoneInstrument import OvertoneInstrument
-from synth.note_envelopes import ArpeggioNoteEnvelope,\
-        ConstantNoteEnvelope, MidiTrackNoteEnvelope
+from synth.note_envelopes import MidiTrackNoteEnvelope
 import time
 import struct
 
@@ -27,19 +26,17 @@ def profile():
         p.strip_dirs().sort_stats('time').print_stats()
         sys.exit(0)
 
-def plot():
+def plot(input):
     if "--plot" in sys.argv:
         opts = Options()
-        instr = OvertoneInstrument(opts, ArpeggioNoteEnvelope())
-        input = instr
         nr_of_samples = int(sys.argv[sys.argv.index("--plot") + 1])
         if len(sys.argv) > sys.argv.index("--plot") + 2 and sys.argv[sys.argv.index("--plot") + 2].isdigit():
 
 
             start_at = int(sys.argv[sys.argv.index("--plot") + 2])
-            samples = instr.get_samples_in_byte_rate(nr_of_samples + start_at)[start_at:]
+            samples = input.get_samples_in_byte_rate(nr_of_samples + start_at, 0)[start_at:]
         else:
-            samples = instr.get_samples_in_byte_rate(nr_of_samples)
+            samples = input.get_samples_in_byte_rate(nr_of_samples)
         import Gnuplot
         g = Gnuplot.Gnuplot()
         g.title("Yo")
@@ -57,11 +54,13 @@ def output_to_wave_writer(options, synth):
     wave = WaveWriter(options, "output.wav", also_output_to_stdout = "--stdout" in sys.argv)
     t= 0
     try:
-        while True:
-            wave.write_samples(synth.get_samples_in_byte_rate(options.buffer_size, t))
+    	w = True
+        while w:
+            w = wave.write_samples(synth.get_samples_in_byte_rate(options.buffer_size, t))
             t += options.buffer_size
     except KeyboardInterrupt:
         sys.stderr.write("Writted %d samples\n" % t)
+    finally:
         wave.close() 
 
 # It's global time
@@ -98,13 +97,8 @@ def stream_to_pyaudio(options, synth):
 def main():
     synth = process_midi_files()
     profile()
-    plot()
+    plot(synth)
     opts = Options()
-    if input is None:
-        env = ArpeggioNoteEnvelope()
-        env = ConstantNoteEnvelope(opts, 68)
-        instr = OvertoneInstrument(opts, env)
-        synth = instr
 
     wave = None
     if 'pyaudio' in globals() and "--wave" not in sys.argv:
