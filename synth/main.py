@@ -31,6 +31,7 @@ def get_args():
             help='the input file path')
     parser.add_argument('output', metavar='OUTPUT', nargs='?', 
             help='the optional output file path. Default is INPUT.wav')
+    parser.add_argument('--bpm', '-b')
     parser.add_argument('-w', '--wave', action='store_true',
             help='Output wave file.')
     parser.add_argument('--profile', action='store_true',
@@ -38,7 +39,7 @@ def get_args():
     parser.add_argument('--stdout', action='store_true',
             help='Also write PCM data to stdout. Only valid in conjunction with the --wave flag.')
     args = parser.parse_args()
-    opts = Options(args.input[0], args.output)
+    opts = Options(args.input[0], args.output, args.bpm)
     opts.write_wave = args.wave
     opts.write_wave_to_stdout = args.stdout
     opts.profile_application = args.profile
