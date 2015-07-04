@@ -43,16 +43,22 @@ sudo python setup.py install
 Run
 ===
 
+If pyaudio is installed you can stream midi by running:
+
+```
+synth test_files/midi/bwv772.mid
+```
+
 Stream midi:
 
 ```
-blakey test_files/midi/bwv772.mid | aplay -f S16_LE -r 44100 -c 1
+synth test_files/midi/bwv772.mid --wave --stdout | aplay -f S16_LE -r 44100 -c 1
 ```
 
-Write wav file:
+You can also write wav files directly with `--wave` or `-w`:
 
 ```
-blakey -w test_files/midi/bwv772.mid
+synth -w test_files/midi/bwv772.mid
 ```
 
 Test 

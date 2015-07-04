@@ -11,6 +11,7 @@ class WaveWriter(object):
         self.open()
 
     def open(self):
+        sys.stderr.write("Opening %s for writing\n" % self.filename)
         w = wave.open(self.filename, "w")
         w.setnchannels(1)
         w.setsampwidth(self.options.byte_rate)
@@ -31,7 +32,7 @@ class WaveWriter(object):
 
     def close(self):
         self.wave.close()
-        print "Written", self.filename
+        sys.stderr.write("Written %s." % self.filename)
 
     def output(self, synth):
         t= 0
@@ -42,6 +43,7 @@ class WaveWriter(object):
                 w = self.write_samples(samples)
                 t += self.options.buffer_size
         except KeyboardInterrupt:
-            sys.stderr.write("Writted %d samples\n" % t)
+            pass
         finally:
+            sys.stderr.write("Written %d samples.\n" % t)
             self.close() 
