@@ -49,7 +49,7 @@ If pyaudio is installed you can stream midi by running:
 synth test_files/midi/bwv772.mid
 ```
 
-Stream midi:
+Streaming midi without pyaudio is also possible by piping into `aplay`:
 
 ```
 synth test_files/midi/bwv772.mid --wave --stdout | aplay -f S16_LE -r 44100 -c 1
